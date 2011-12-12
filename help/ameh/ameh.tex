@@ -1,0 +1,276 @@
+\documentclass[12pt]{book}
+
+%\linespread{1.6}
+\usepackage{times}
+\usepackage[margin=1in]{geometry}
+\usepackage[round,sort&compress,numbers]{natbib}
+%\newcommand{\citenumfont}{\textit}
+\usepackage{framed}
+
+\usepackage{dingbat,phaistos,manfnt}
+
+%\usepackage{fancyhdr}
+%\pagestyle{fancy}
+%\renewcommand{\headrulewidth}{0pt}
+%\textheight=690pt
+%\lhead{}
+%\rhead{}
+%\cfoot{}
+%\rfoot{\thepage}
+
+\usepackage[small,compact]{titlesec}
+\titleformat{\chapter}{\vspace{1in}\sf\Huge}{\thechapter} {12pt} {}
+\titleformat{\section} {\vspace{6pt}\sf\Large}{\thesection} {12pt} {}
+\titleformat{\subsection} {\vspace{4pt}\sf\large}{\thesubsection} {12pt} {}
+\titleformat{\subsubsection} {\vspace{2pt}\it}{\thesubsubsection} {12pt} {\vspace{-4pt}}
+
+
+\newcommand{\hyphy}{\textit{HyPhy}}
+
+%\newcommand{\source}[1]{\begin{leftbar}\vspace{1ex} \noindent \begin{Verbatim}#1 \vspace{1ex}\end{leftbar}}
+
+%\newcommand{\oldtext}[1]{\sout{#1}}
+
+\usepackage{graphicx,url}
+\usepackage{amsmath}
+
+\begin{document}
+
+\title{Advanced Molecular Evolution using {\it HyPhy}}
+\author{Sergei L.~K.~Pond, Art F.~Y.~Poon, and Spencer V.~Muse}
+\date{}
+\maketitle
+
+\chapter {Introduction}
+
+\section {What is \hyphy?}
+
+We're going to take three cracks at answering this question, so just bear with us.
+
+\textbf{\hyphy\ is a software package.}  Its name stands for `{\bf Hy}pothesis testing using {\bf Phy}logenies'.  So, the primary function of \hyphy\ is to analyze genetic (DNA or RNA) sequences in a phylogenetic framework.  A phylogeny itself is a hypothesis --- it is a tree-shaped (hierarchical) model of how sequences are descended from common ancestors.  Because of these evolutionary relationships, sequences are not independent random outcomes of molecular evolution, like rolling dice.  
+%Put another way, one should not get too excited about observing hundreds of sequences that all contain an `A' at position 101 because they are very probably all copies of an older sequence that contained an `A' at position 101.  
+Moreover, we are usually more interested in the evolutionary processes that led to the observed sequences than in the end products of evolution themselves.  We will go so far as to declare that if you want to test {\it any} hypothesis that involves genetic sequence data, then you are obliged to account for the phylogeny!  Because of this, phylogenies are a core component of {\it HyPhy}.
+
+\textbf{\hyphy\ is scientific software.}  It was initially developed by Sergei Pond to clean up and extend some programs that were written by Spencer Muse.  Because \hyphy\ was designed to be highly customizable, it became useful to simply keep extending \hyphy\ as new research projects arose.  \hyphy\ became an open-source project under the General Public License (GPL), allowing anyone to download, use and modify the source code.  It is also distributed for free as executable binaries that are compiled for Mac OS X, Windows, and Linux.  At the time of writing this book, \hyphy\ has over 6,000 registered users and has been cited in over 500 peer-reviewed scientific publications.  
+
+\textbf{\hyphy\ is as simple or as complex as you need it to be.}  It has a rich graphical user interface (GUI) that can display colourful tables, charts, sequence alignments and trees.  You can design an analysis using a point-and-click interface, or choose from a wide selection of popular methods in a Standard Analyses menu.  On the other hand, \hyphy\ also has its own scripting language for implementing as complex an analysis as you can imagine.  (We'll elaborate on scripting languages in a bit.)  \hyphy\ can also be compiled as a shared library that can be called from another programming environment such as Python, Ruby, or R, so that it can act as a component of a bioinformatic pipeline.  It can be run in a parallel computing environment where an analysis is broken down into tasks that can be distributed among tens or hundreds of processors and run simultaneously.  
+
+This is a lot to absorb in one go, so let's try a goofy analogy.  \hyphy\ is sort of like a nice restaurant:
+\begin{itemize}
+\itemsep 0pt
+\item There are piles of fruit, vegetables and meats in the pantry that nearly all diners will never see.  This is the {\bf source code}.  
+\item There are lots of shiny pots, pans, knives and ovens that turn this raw material into meals.  Again, most of this stuff is hidden from the dining room -- perhaps by jaunty red vinyl-covered swinging doors.  This is the {\bf batch language}.
+\item We have a set menu of meals.  These meals are on the menu because they're popular and they're tasty.  These are the {\bf template batch files}.  
+\item We have a kids' menu with a selection of those tasty meals accompanied by nice pictures and crayons.  This is the {\bf GUI}.
+\item We even do deliveries so you never have to drive to the restaurant.  This is the \textbf{\textit{Datamonkey} webserver}.
+\end{itemize}
+
+\noindent After closing time, we kick back and mess around with the recipes.  We tinker.  We experiment.  Some of it doesn't turn out so well, but that one dish last night?  Man.  
+
+\vspace{1em}
+We want to invite you into the kitchen.  We're gonna to teach you how to cook.
+
+
+%A wide range of cutting-edge techniques for sequence analysis have been designed and implemented in {\it HyPhy}.  
+
+
+%The fundamental objects of \hyphy not only include integers, matrices and associative lists, but also sequence alignments, trees, and substitution rate models.
+
+\section {Is this book for me?}
+
+This book was written for you.  You are a graduate student or post-doc who once mentioned that you wrote a program once and, as a result, you've been asked by your lab principal investigator\footnote{We know that you're not the principal investigator, because no PI would have the time to be reading this right now.} to run analysis $\mathcal{X}$ on some data.  $\mathcal{X}$ is similar to $\mathcal{Y}$, a standard analysis that has been used hundreds of times by other laboratories and is available in dozens of software packages and web applications.  
+
+But, owing to the uniqueness of the model system being studied in the lab, or the research interests of the PI, there is a significant difference that means that you can't run $\mathcal{X}$ using software designed to run $\mathcal{Y}$.  Or any software that you can find.  Just as you've resigned yourself to writing your own $\#\$!\&@$ program to implement $\mathcal{X}$, one of your colleagues mentions recently seeing a similar analysis in a paper.  After downloading and scanning over the paper, you discover two things: (1) the analysis is definitely not $\mathcal{X}$, but (2) they didn't have to write their own software - they just used something called {\it HyPhy}.  
+
+\hyphy\ enables you to do just about anything in the domain of phylogenetics.  This is both a blessing and a curse --- to borrow a popular phrase from C programming, it ``gives you enough rope to hang yourself with''.  While there are thousands of biologists that use the standard analyses distributed with \hyphy\ or accessed as web applications on our public computing cluster ({\it Datamonkey}), there are only a small (but growing!) number of biologists that have mastered the \hyphy\ batch language to the degree that they can write or modify scripts for their own research.  
+
+We're going to assume that you are acquainted with some of the basic concepts in computer programming.  For example, we assume that you know why one has to initialize a variable, what a logical operator is (such as `and' or `\&\&', depending on the language), and what an iterative block of code (such as for-loops) looks like.  On the other hand, we try to explain enough so that those of us who are kind of rusty can plod along.  This book is written to enable someone who is acquainted with programming to jump right into customizing or developing new models in molecular evolution using \hyphy.
+
+This book is {\it not} for you if you're not even remotely interested in modifying a template batch file.  You can get what you need to get done through {\it Datamonkey} or one of the items in the standard analysis menu.  We've tried our best to make the standard analyses in \hyphy\ accessible and self-explanatory.  We even have several book chapters and a rudimentary software manual that do a pretty good job of telling you what you need to know to get things done!  
+
+
+\section {How do I get \hyphy?}
+
+\hyphy\ is free and open-sourced under the General Public License (GPL).  Just direct your web browser to our homepage: {\tt http://www.hyphy.org} and hit the big shiny `download' button.  You can either download the source code and compile it yourself, or download one of our pre-compiled binaries for Mac OS X, Linux, or Windows.  The compiled executables will be sufficient to learn the \hyphy\ batch language, which is the main objective of this book.  If you are feeling extra keen and feel like becoming a developer, you can also get a copy of the development code from our github repository at {\tt http://www.github.com/veg/hyphy}.
+
+
+%But we don't like Windows.  Seriously, get a Mac already.  What kind of bioinformaticist are you?
+
+
+
+\chapter {The \hyphy\ Batch Language}
+
+A batch language is a collection of application-specific function calls that make it possible to automate long and complex processes.  The \hyphy\ batch language (HBL) is an application-specific language for modeling molecular evolution.  Like nearly all  programming languages, the HBL understands conventional objects such as scalar values (the number 3.14) and arrays (the inclusive sequence of integers from 1 to 10).  Because \hyphy\ is a language for modeling molecular evolution, it also includes objects that represent multiple sequence alignments (DataSet), phylogenetic trees (Tree), and substitution rate models (Model).  These domain-specific objects are so important and elaborate that we will dedicate a chapter for each of them. 
+
+ For the time being, we're just going to get acquainted with the conventions and syntax of the HBL.  This is the `glue' that makes everything work together.
+
+
+\section {Similarities to C syntax}
+
+The HBL is modeled after the programming language C.  The following is a (non-exhaustive) list of similarities between HBL and C, for those of you that have programmed in C before and want to get a running start into coding HBL:
+
+\begin{itemize}
+\item Statements are terminated with a semi-colon (;) 
+\item Arguments are separated by commas.
+\item Blocks of code are enclosed in curly braces (\{\ldots\}). 
+\item Expressions are enclosed in parentheses.
+\item The operator {\tt x+=y} increments {\tt x} by {\tt y}.
+\item Whitespace is ignored.
+\item Inline comments are prefixed with {\tt //}
+\item Block comments are enclosed with {\tt /*}\ldots{\tt */}
+\item External HBL files are imported using {\tt \#include}
+\item Blocks are iterated using a {\tt for(}{\it initial; until; increment}{\tt )}, {\tt while}, or {\tt do}\ldots{\tt while} statements
+\item Conditional execution of blocks are handled by {\tt if(}{\it expression}{\tt )} and {\tt else(}{\it expression}{\tt )} statements.
+\item Logical operations are performed using {\tt \&\&} (and) and {\tt ||} (or).
+\item Arrays and matrices are zero-indexed.
+\item Arrays and matrices are indexed into using a square bracket notation.  For example, {\tt m[0][1]} retrieves the entry in the first row and second column of a two-dimensional matrix.
+\item Input and output are handled by functions named {\tt fscanf} and {\tt fprintf}, respectively.  However, their actual usage is differs from C (see Section \ref{io}).
+\end{itemize}
+
+If you've never written a program in C, \textbf{don't worry}!  We will be going over the HBL syntax for the remainder of this chapter (and a few other chapters besides).
+
+On the other hand, the HBL departs substantially from the conventions of the C language in several important respects.  First of all, \hyphy\ does not explicitly distinguish between integers and floating-point numbers.  All scalar values are handled as floating-point numbers.  Consequently, the number 1 is stored internally as a floating-point number 1.0 but displayed as 1.  
+
+Second, the HBL uses {\bf dynamic typing} of variables instead of the explicit variable declaration of C.  In other words, the type of a variable is determined by its context.  The following statement:
+
+
+\begin{leftbar}
+\begin{verbatim}
+x = 1;
+x = x + y;
+\end{verbatim}
+\end{leftbar}
+
+\noindent creates a floating-point variable named {\tt x} and assigns it the value 1.0, and then creates a second floating-point variable named {\tt y} and assigns it the default value of 0.  It assumes that the second variable is also floating-point because it is being added to a floating point variable.  
+
+Most importantly, HBL is truly more of a scripting language than a low-level programming language like C.  That means that it is a lot more convenient to do regular tasks.  For example, you can define a matrix without having to explicitly allocate memory to store its contents.
+
+In the following sections, we will go over the fundamental aspects of the HBL syntax.  In the interest of giving you enough information to get a quick start, and to place the application-specific components of the HBL (such as Tree) in context, we will gloss over some of the finer details --- you can find these in the comprehensive HBL reference wiki at our website, \textbf{http:// www.hyphy.org}.  
+
+
+\section {Input and Output}\label{io}
+
+\subsection {fprintf}
+This is how you output ``Hello, world!'' to the \hyphy\ console window:
+
+\begin{leftbar}
+\begin{verbatim}
+fprintf (stdout, "Hello, world!\n");
+\end{verbatim}
+\end{leftbar}
+
+The same command in C writes formatted output to the named stream, which is the first argument in the function.  In this case, we are writing to the standard output stream (stdout) that is displayed in the \hyphy\ console window.  There is a shorthand function in C that performs this task called {\tt printf}, which has no equivalent in HBL because it is somewhat redundant.
+
+As {\tt fprintf} goes, the major difference is that C uses placeholders (such as {\tt \%d}) to insert non-string objects into a formatted string, the HBL dynamically types all arguments after the first as strings and concatenates them into a single string.  For example, to output a floating point value stored in a variable named {\tt lkhood}, you could use the following command:
+
+\begin{leftbar}
+\begin{verbatim}
+fprintf (stdout, "The likelihood is: ", lkhood, "\n");
+\end{verbatim}
+\end{leftbar}
+
+Most objects in \hyphy\ have a string representation that will get returned when it is placed in an {\tt fprintf} statement.  
+
+\subsection {fscanf}
+
+{\tt fscanf} serves the same function in \hyphy\ as it does for C -- namely reading input from a stream.  In the HBL, {\tt fscanf} takes a minimum of three arguments.  
+
+The first argument identifies the {\bf stream} from which input will be read.  When {\tt stdin} (standard input) is given as the stream argument, then the \hyphy\ console window text input field is activated.  Whatever text is entered and followed by a carriage return is read by {\tt fscanf}.  More commonly, however, the first argument is an absolute or relative path to a file to be opened and read.  (The actual opening and reading all takes place behind the scenes.)  
+
+The second argument is a format string that tells \hyphy\ how to interpret (parse) the contents of each line read from the stream.  Instead of using the C placeholders, \hyphy\ instead uses a \hyphy\ type identifiers, including {\tt Number}, {\tt Matrix}, {\tt Tree}, and {\tt String} (see Section \ref{types}).  For example, it is possible to read the contents of the following line:
+
+\begin{verbatim}
+Wankel Rotary Engine,1.61803,((Human,Chimpanzee),Gorilla);
+\end{verbatim}
+
+\noindent with the following line:
+
+\begin{leftbar}
+\begin{verbatim}
+fscanf (path, "String,Number,Tree", foo, bar, baz);
+\end{verbatim}
+\end{leftbar}
+
+\noindent Now {\tt foo} is a {\tt String} object with the value ``Wankel Rotary Engine'', {\tt bar} is a {\tt Number} object with the value 1.61803, and {\tt baz} is a {\tt Tree} object with three tips.  This use of {\tt fscanf} is very useful for handling extremely large files because you can use it within a loop to iterate over successive lines in a file.
+
+\begin{framed}
+\vspace*{-1ex}
+\noindent
+\textdbend\hspace{1ex}
+\small
+\textbf{Vaara!}  The use of multiple type identifiers in a comma-delimited format string is a new feature in \hyphy\ and is not supported in versions prior to 2.0.
+\end{framed}
+
+Alternatively, the format string can be comprised of a single argument that tells \hyphy\ to read in the entire contents of a file.  {\tt Raw} redirects the entire contents of the file into a single string object.  {\tt Lines} creates a vector (matrix) whose entries correspond to lines in the file delimited by the platform-specific line-break marker.  Obviously, the latter is much more convenient but requires more memory, so you might run into trouble if you are attempting to read an extremely large file (about half a gigabyte or so).
+
+
+
+\section {Types}\label{types}
+
+\subsection {Number}
+
+All numerical values in \hyphy\ are stored internally as a double-precision floating point variable.  {\tt Number} objects can be manipulated with the usual arithmetic operators and transcendental functions:
+
+\begin{center}
+\begin{tabular}{ll}
+\hline
+Syntax & Function\\
+\hline
+{\tt x + y} & Add\\
+{\tt x - y} & Subtract\\
+{\tt x * y} & Multiply\\
+{\tt x / y} & Divide\\
+{\tt x \$ y} & Integer divide (return the integer part of the quotient)\\
+{\tt x \% y} & Modulo operator (return the remainder of the quotient)\\
+{\tt Exp(x)} & Exponential function\\
+{\tt Log(x)} & Natural logarithm\\
+{\tt Sin(x)} & Sine function (also {\tt Cos}, {\tt Tan}, {\tt Arctan})\\
+{\tt Erf(x)} & Error function, $\frac{2}{\sqrt{\pi}}\int_{0}^{x}\exp{-t^2}dt$\\
+{\tt Gamma(x)} & Gamma function, $\int_0^{\inf}t^{z-1}e^{-t}dt$\\
+\hline
+\end{tabular}
+\end{center}
+
+
+
+\subsection {String}
+
+
+
+\subsection {Matrix}
+
+
+
+\section {Operators}
+
+\section {Expressions}
+
+\section {Control Flow}
+
+
+
+
+We often want to run a sequence of function calls many times, or run different sequences depending on the outcomes of previous calls.  , batch languages typically include syntax for iteration (loops) and conditioning. 
+
+
+\section {Functions}
+
+
+
+
+\chapter {Model}
+
+
+\chapter {Tree}
+
+
+\chapter {DataSet}
+
+\chapter {LikelihoodFunction}
+
+
+\end{document}
+
+
+
+

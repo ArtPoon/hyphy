@@ -294,6 +294,7 @@ endif(${MPI_FOUND})
 #-------------------------------------------------------------------------------
 # hyphy debug target
 #-------------------------------------------------------------------------------
+add_definitions(-D__AFYP_REWRITE_BGM__)
 add_executable(
     HYPHYDEBUG
     EXCLUDE_FROM_ALL

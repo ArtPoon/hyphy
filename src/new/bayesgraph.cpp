@@ -55,7 +55,8 @@ _String     _HYBgm_NODE_INDEX   ("NodeID"),
 //__________________________________________________________________________________________________________
 #ifdef      __UNIX__
 
-void        ConsoleBGMStatus (_String, _Parameter, _String * fileName = nil);
+/* I have no idea why but this line is causing my compiler to barf :-P  afyp October 27, 2011 */
+//void        ConsoleBGMStatus (_String, _Parameter, _String * fileName = nil);
 
 
 void        ConsoleBGMStatus (_String statusLine, _Parameter percentDone, _String * fileName = nil)
@@ -175,7 +176,7 @@ _BayesianGraphicalModel::_BayesianGraphicalModel (_AssociativeList * nodes)
 
 
     // the fundamental defining characteristic of _BayesianGraphicalModel objects
-    num_nodes           = nodes->avl.countitems(),
+    num_nodes           = nodes->avl.countitems();
 
 
     // allocate space to class matrices
@@ -209,12 +210,22 @@ _BayesianGraphicalModel::_BayesianGraphicalModel (_AssociativeList * nodes)
         //                                      "PriorPrecision" - hyperparameter for Gaussian node
         //                                      "PriorScale"    - fourth hyperparameter for Gaussian node
 
+		
         _String name = (_String *) (this_avl->GetByKey (_HYBgm_NODE_INDEX, STRING))->toStr();
 
         node_names && (const char *) name;  // append a pointer to _String duplicate
 
-        // DEBUGGING
-        ReportWarning (_String("node_name[") & node & "]=" & (_String *)node_names.lData[node]);
+        
+        /* wuz: ReportWarning (_String("node_name[") & node & "]=" & (_String *)node_names.lData[node]);
+         20111210 SLKP : _String (_String*) contstructor will actually assume that the argument is 
+		 : 'unencumbered' i.e. not a member of _Lists etc
+		 : this function call will create a stack copy of node_names.lData[node]
+		 : print it to messages.log and then kill the dynamic portion of the object (sData)
+		 : this will create all kinds of havoc downstream
+         */
+        // bug fix:
+        ReportWarning (_String("node_name[") & node & "]=" & *((_String *)node_names.lData[node]));
+		
 
 
         // node type (0 = discrete, 1 = continuous)
@@ -331,7 +342,7 @@ _BayesianGraphicalModel::_BayesianGraphicalModel (_AssociativeList * nodes)
     _List   emptyList (global_max_parents + 1);
 
     for (long node = 0; node < num_nodes; node++) {
-        node_score_cache && (&emptyList);
+        node_score_cache && (&emptyList);	// appends a dynamic copy of _List object to start
     }
 
     scores_cached = FALSE;
@@ -345,6 +356,18 @@ _BayesianGraphicalModel::_BayesianGraphicalModel (_AssociativeList * nodes)
 _BayesianGraphicalModel::~_BayesianGraphicalModel (void)
 {
     /* destructor */
+	
+	// this is not working - crash when attempting to replace BGM object
+	
+	// we need to deallocate all those dynamic copies ( _List::makeDynamic() ) 
+	/*
+	if (node_score_cache.lLength > 0) {
+		for (long node = 0; node < num_nodes; node++) {
+			_List * this_list = (_List *) node_score_cache.lData[node];
+			delete (this_list);
+		}
+	}
+	 */
 }
 
 
@@ -816,11 +839,11 @@ _Parameter  _BayesianGraphicalModel::ComputeDiscreteScore (long node_id, _Simple
 
     // impute score if missing data
     if (has_missing.lData[node_id]) {
-        return (ImputeNodeScore (node_id, parents));
+        return ImputeDiscreteNodeScore (node_id, parents);
     } else {
         for (long par = 0; par < parents.lLength; par++) {
             if (has_missing.lData[parents.lData[par]]) {
-                return (ImputeNodeScore (node_id, parents));
+                return ImputeDiscreteNodeScore (node_id, parents);
             }
         }
     }
@@ -988,7 +1011,7 @@ void    _BayesianGraphicalModel::InitMarginalVectors (_List * compute_list)
 
     DeleteObject (newstore);
 }
-
+ 
 
 
 //___________________________________________________________________________________________
@@ -1447,6 +1470,9 @@ void    _BayesianGraphicalModel::CacheNodeScores (void)
 
 //________________________________________________________________________________________________________
 #if defined __HYPHYMPI__
+/*
+	Head node processes results from compute node.
+ */
 void _BayesianGraphicalModel::MPIReceiveScores (_Matrix * mpi_node_status, bool sendNextJob, long node_id)
 {
     _Matrix     single_parent_scores (num_nodes, 1, false, true);
@@ -1521,6 +1547,12 @@ void _BayesianGraphicalModel::MPIReceiveScores (_Matrix * mpi_node_status, bool 
 }
 
 
+//___________________________________________________________________________________________
+
+/* ------------------------------------------------------------------------------------
+	Pass current network structure, data, constraint graph, and other analysis settings
+	to compute node as HBL.
+   ------------------------------------------------------------------------------------ */
 void _BayesianGraphicalModel::SerializeBGMtoMPI (_String & rec)
 {
     char        buf [255];
@@ -2007,30 +2039,26 @@ void    _BayesianGraphicalModel::GraphMetropolis (bool fixed_order, long mcmc_bu
 
 
     // initialize chain state
-    if (node_order_arg.lLength == 0) {
-        if (fixed_order) {
-            _String oops ("ERROR: Missing node order when attempting structural-MCMC with fixed order argument.");
-            WarnError (oops);
-            return;
-        } else {    // node order argument has not been set by user
-            (*proposed_graph)   = (_Matrix &) theStructure;
-            proposed_order      = GetOrderFromGraph (theStructure);
-            ReportWarning (_String("Starting GraphMetropolis() without node_order_arg, extracted ") & (_String *) proposed_order->toStr() & " from theStructure");
-        }
-    } else {    // set to user arguments
-        if (GraphObeysOrder (theStructure, node_order_arg)) {
-            (*proposed_graph) = (_Matrix &) theStructure;
+	if (fixed_order)
+	{
+		if (node_order_arg.lLength > 0 && GraphObeysOrder (theStructure, node_order_arg) )
+		{
+			(*proposed_graph) = (_Matrix &) theStructure;
             (*proposed_order) = (_SimpleList &) node_order_arg;
-
+			
             ReportWarning (_String ("Starting GraphMetropolis() using node_order_arg:\n ") & (_String *) proposed_order->toStr());
-        } else {
-            _String oops ("ERROR: Structure does not match order, aborting GraphMetropolis().");
+		}
+		else
+		{
+			_String oops ("ERROR: Structure does not match order, aborting GraphMetropolis().");
             WarnError (oops);
-
+			
             return;
-        }
-    }
-
+		}
+	} else {
+		(*proposed_graph)   = (_Matrix &) theStructure;
+		proposed_order      = GetOrderFromGraph (theStructure);
+	}
 
 
 
@@ -2057,7 +2085,8 @@ void    _BayesianGraphicalModel::GraphMetropolis (bool fixed_order, long mcmc_bu
     // main loop
     for (long step = 0; step < mcmc_steps + mcmc_burnin; step++) {
         //ReportWarning (_String ("current graph (") & current_score & "): \n" & (_String *) current_graph.toStr());
-
+		
+		// modify the graph by one edge
         RandomizeGraph (proposed_graph, proposed_order, prob_swap, 1, max_fails, fixed_order);
 
 
@@ -2196,36 +2225,45 @@ void    _BayesianGraphicalModel::RandomizeGraph (_Matrix * graph, _SimpleList * 
 
 
         if (fixed_order || genrand_real2() > prob_swap) {
-            // add an edge if it is absent and not banned
             if ( (*graph)(parent,child) == 0 && constraint_graph(parent,child) >= 0) {
+				// add an edge if it is absent and not banned
                 if (num_parents.lData[child] == max_parents.lData[child]) {
+					// child is already at maximum number of parents
                     // move an edge from an existing parent to target parent
                     _SimpleList     removeable_edges;
 
                     // build a list of current parents
                     for (long par = 0; par < num_nodes; par++)
+						// par is parent of child AND the edge is NOT enforced
                         if ((*graph)(par,child) && constraint_graph(par,child)<=0) {
                             removeable_edges << par;
                         }
 
                     if (removeable_edges.lLength > 0) {
                         // shuffle the list and remove the first parent
+						removeable_edges.Permute(1);
+						graph->Store (removeable_edges.lData[0], child, 0.);
+						graph->Store (parent, child, 1.);
+						
+						/*
                         graph->Store (removeable_edges.lData[ (long) (genrand_real2()*removeable_edges.lLength) ], child, 0.);
                         graph->Store (parent, child, 1.);
+						 */
                         step++;
                     } else {
                         // none of the edges can be removed
                         fail++;
                     }
                 } else {
+					// child can accept one more edge
                     graph->Store (parent, child, 1.);
                     num_parents.lData[child]++;
                     step++;
                 }
             }
 
-            // delete an edge if it is present and not enforced
             else if ( (*graph)(parent,child) == 1 && constraint_graph(parent,child) <= 0) {
+				// delete an edge if it is present and not enforced
                 graph->Store (parent, child, 0.);
                 num_parents.lData[child]--;
                 step++;
@@ -2235,8 +2273,8 @@ void    _BayesianGraphicalModel::RandomizeGraph (_Matrix * graph, _SimpleList * 
         } else {    // swap nodes in ordering and flip edge if present
             bool    ok_to_go = TRUE;
 
-            // edge cannot be flipped
-            if ( (*graph)(parent,child) == 1  &&  ( constraint_graph(child,parent)<0 || constraint_graph(parent,child) )>0  ) {
+            // P->C cannot be flipped if C->P is banned or P->C is enforced
+            if ( (*graph)(parent,child) == 1  &&  ( constraint_graph(child,parent)<0 || constraint_graph(parent,child)>0 )  ) {
                 ok_to_go = FALSE;
             }
 
@@ -2245,11 +2283,15 @@ void    _BayesianGraphicalModel::RandomizeGraph (_Matrix * graph, _SimpleList * 
             if (ok_to_go) {
                 for (long bystander, i=c_rank+1; i < p_rank; i++) {
                     bystander = order->lData[i];    // retrieve node id
-
+					
+					// by flipping the parent->child edge, we would screw up ordering for
+					// an enforced edge:  C < B < P   becomes  P < B < C  where B->C or P->B is enforced.
+					// also, a banned edge implies a node ordering constraint
                     if (
                         ( (*graph)(parent,bystander)==1 && constraint_graph (parent, bystander)>0 )  ||
                         ( (*graph)(bystander,child)==1 && constraint_graph (bystander, child)>0 )  ||
-                        constraint_graph (bystander,parent)<0  ||  constraint_graph (child,bystander)<0
+                        constraint_graph (bystander,parent)<0  ||  
+						constraint_graph (child,bystander)<0
                     ) {
                         ok_to_go = FALSE;
                         break;
@@ -2260,8 +2302,8 @@ void    _BayesianGraphicalModel::RandomizeGraph (_Matrix * graph, _SimpleList * 
 
             // if everything checks out OK
             if ( ok_to_go ) {
-                // flip the target edge
                 if ( (*graph)(parent,child) == 1 && constraint_graph(child,parent)>=0 ) {
+					// flip the target edge
                     graph->Store (parent, child, 0);
                     graph->Store (child, parent, 1);
                     num_parents.lData[child]--;
@@ -2276,18 +2318,29 @@ void    _BayesianGraphicalModel::RandomizeGraph (_Matrix * graph, _SimpleList * 
                                 removeable_edges << par;
                             }
 
+						removeable_edges.Permute(1);
+						graph->Store (removeable_edges.lData[0], parent, 0.);
+						/*
                         graph->Store (removeable_edges.lData[ (long) (genrand_real2()*removeable_edges.lLength) ], parent, 0.);
+						 */
                         num_parents.lData[parent]--;
                     }
 
                     step++;
                 }
+				// if the number of parents for parent node will exceed maximum, 
+				// then the edge is deleted instead of flipped (delete without add)
 
                 // swap nodes in order
                 order->lData[p_rank] = child;
-                order->lData[c_rank] = parent;
+                order->lData[c_rank] = parent;	// remember to update the order matrix also!
 
                 // update edges affected by node swap
+				//  child <-  N   ...   N <- parent                   _________________,
+                //                                    becomes        |                 v
+                //                                                 parent    N         N    child
+                //                                                           ^                |
+                //                                                           `----------------+
                 for (long bystander, i = c_rank+1; i < p_rank; i++) {
                     bystander = order->lData[i];
 
@@ -2300,21 +2353,27 @@ void    _BayesianGraphicalModel::RandomizeGraph (_Matrix * graph, _SimpleList * 
 
                         if (num_parents.lData[bystander] > max_parents.lData[bystander]) {
                             // number of parents for bystander node now exceeds maximum,
-                            //  select a random edge to remove
+                            //  select a random edge to remove - including the edge C->B we just made!
                             _SimpleList     removeable_edges;
 
-                            for (long par = 0; par < num_nodes; par++)
+                            for (long par = 0; par < num_nodes; par++) {
                                 if (  (*graph)(par, bystander)  &&  constraint_graph(par, bystander)<=0  ) {
                                     removeable_edges << par;
                                 }
-
-                            //removeable_edges.Permute(1);
+							}
+							
+							
+                            removeable_edges.Permute(1);
+							graph->Store (removeable_edges.lData[0], bystander, 0.);
+							/*
                             graph->Store (removeable_edges.lData[ (long) (genrand_real2()*removeable_edges.lLength) ], bystander, 0.);
+							 */
                             num_parents.lData[bystander]--;
                         }
                     }
 
                     if ( (*graph)(parent,bystander) == 1) {
+						// flip edge from parent to bystander (P->B)
                         graph->Store (parent, bystander, 0);
                         num_parents.lData[bystander]--;
 
@@ -2322,15 +2381,20 @@ void    _BayesianGraphicalModel::RandomizeGraph (_Matrix * graph, _SimpleList * 
                         num_parents.lData[parent]++;
 
                         if (num_parents.lData[parent] > max_parents.lData[parent]) {
+							// remove excess edge from X to parent other than bystander
                             _SimpleList     removeable_edges;
 
-                            for (long par = 0; par < num_nodes; par++)
+                            for (long par = 0; par < num_nodes; par++) {
                                 if (  (*graph)(par, parent)  &&  constraint_graph(par, parent)<=0  ) {
                                     removeable_edges << par;
                                 }
-
-                            //removeable_edges.Permute(1);
+							}
+							
+                            removeable_edges.Permute(1);
+							graph->Store (removeable_edges.lData[0], parent, 0.);
+							/*
                             graph->Store (removeable_edges.lData[ (long) (genrand_real2()*removeable_edges.lLength) ], parent, 0.);
+							 */
                             num_parents.lData[parent]--;
                         }
                     }
@@ -2523,7 +2587,7 @@ void    _BayesianGraphicalModel::OrderMetropolis (bool do_sampling, long n_steps
 
 
     DumpMarginalVectors (marginals);
-
+	DeleteObject (marginals);
 
     /*SLKP 20070926; include progress report updates */
 #if !defined __UNIX__ || defined __HEADLESS__
