@@ -1,4 +1,3 @@
-
 /*
 
 HyPhy - Hypothesis Testing Using Phylogenies.
@@ -713,7 +712,6 @@ _PMathObj   _Matrix::Eigensystem (void)
                 cpy->Schur   ();
                 cpy->EigenDecomp (*rl,*im);
 
-
                 key = "0";
                 {
                     _FString fk (key, false);
@@ -1113,7 +1111,7 @@ _PMathObj   _Matrix::CholeskyDecompose (void)
         }
     }
 
-    ReportWarning (_String("_Matrix::CholeskyDecompose returning with ") & (_String *) lowerTri->toStr());
+    // ReportWarning (_String("_Matrix::CholeskyDecompose returning with ") & (_String *) lowerTri->toStr());
 
     return lowerTri;
 }
@@ -1458,7 +1456,7 @@ _PMathObj _Matrix::Execute (long opCode, _PMathObj p, _PMathObj p2)   // execute
         break;
     case HY_OP_CODE_TRANSPOSE: { // Transpose
         _Matrix* result = (_Matrix*)makeDynamic();
-        result->Transpose ();
+        result->Transpose();
         return result;
     }
     case HY_OP_CODE_TYPE: // Type
@@ -5803,18 +5801,26 @@ _PMathObj       _Matrix::SortMatrixOnColumn (_PMathObj mp)
         return new _Matrix (1,1);
     }
 
+    if (theData == nil) {
+        return new _Matrix (1,1);
+    }
+
     _SimpleList sortOn;
 
     if (mp->ObjectClass () != NUMBER || mp->Value() < 0.0 || mp->Value () > GetVDim()-1) {
         bool goodMe = false;
         if (mp->ObjectClass () == MATRIX) {
             _Matrix * sortOnM = (_Matrix*)((_Matrix*)mp)->ComputeNumeric();
-            long sortBy = sortOnM->GetHDim()*sortOnM->GetVDim();
+            long sortBy      = sortOnM->GetHDim()*sortOnM->GetVDim(),
+                 maxColumnID = GetVDim();
+                  
             for (long k=0; k<sortBy; k=k+1) {
                 long idx = (*sortOnM)[k];
-                if (idx>=0) {
-                    sortOn << idx;
+                if (idx < 0 || idx >= maxColumnID) {
+                    WarnError (_String("Invalid column index to sort on in call to ") & __func__ & " : " & idx); 
+                    return new _MathObject();               
                 }
+                sortOn << idx;
             }
             goodMe = sortOn.lLength;
         }
@@ -5828,10 +5834,9 @@ _PMathObj       _Matrix::SortMatrixOnColumn (_PMathObj mp)
         sortOn << mp->Value();
     }
 
-    if (theData == nil) {
-        return new _Matrix (1,1);
-    }
-
+    // SLKP 20111109 -- replace with a generic sort function
+                     // the code below is BROKEN
+    
     _SimpleList             idx (hDim,0,1);
     for (long col2Sort = 0; col2Sort < sortOn.lLength; col2Sort++) {
         long colIdx = sortOn.lData[col2Sort];
@@ -5934,7 +5939,7 @@ _PMathObj       _Matrix::PoissonLL (_PMathObj mp)
     _Parameter     loglik = 0.0,
                    *logFactorials = new _Parameter [101],
     lambda        = mp->Value(),
-    logLambda      = log (lambda),
+    logLambda     = log (lambda),
     log2p         = log (sqrt(8.*atan(1.)));
 
     checkPointer (logFactorials);
@@ -6163,14 +6168,14 @@ _Parameter      _Matrix::computePFDR (_Parameter lambda, _Parameter gamma)
         _Parameter pi_0 = null/(lDim*(1.-lambda)),
                    pr_p = 0;
 
-
         if (rejected) {
             pr_p = rejected/(_Parameter)lDim;
         } else {
             pr_p = 1./(_Parameter)lDim;
         }
 
-        return     pi_0 * gamma / (pr_p /** (1.-exp(log(1.-gamma)*lDim))*/);
+        return pi_0 * gamma / (pr_p /** (1.-exp(log(1.-gamma)*lDim))*/);
+
     } else {
         return 1;
     }
@@ -6178,7 +6183,7 @@ _Parameter      _Matrix::computePFDR (_Parameter lambda, _Parameter gamma)
 
 //_____________________________________________________________________________________________
 
-_PMathObj       _Matrix::Random (_PMathObj kind)
+_PMathObj _Matrix::Random (_PMathObj kind)
 {
     _String     errMsg;
 
@@ -6236,7 +6241,7 @@ _PMathObj       _Matrix::Random (_PMathObj kind)
     }
 
     else if (kind->ObjectClass() == ASSOCIATIVE_LIST) {
-        ReportWarning (_String("_Matrix::Random() with associative list as first argument."));
+        //ReportWarning (_String("_Matrix::Random() with associative list as first argument."));
 
         // Associative list should contain following arguments:
         //  "PDF" - string corresponding to p.d.f. ("Gamma", "Normal")
@@ -6257,7 +6262,25 @@ _PMathObj       _Matrix::Random (_PMathObj kind)
             } else if (pdf == _String("Wishart")) {
                 return (_Matrix *) WishartDeviate (*(_Matrix *) pdfArgs->GetByKey (arg, MATRIX));
             } else if (pdf == _String("InverseWishart")) {
-                return (_Matrix *) InverseWishartDeviate (*(_Matrix *) pdfArgs->GetByKey (arg, MATRIX));
+				if (keys->lLength == 2) {
+					arg0 = (_String *)(*keys)(1);	// get the second key
+					if (arg0->Equal(&arg)) {
+						// make sure that value associated with ARG0 key is a matrix
+						_Matrix * value = (_Matrix *) pdfArgs->GetByKey(arg, MATRIX);
+						if (value == nil) {
+							errMsg = _String ("Value for key ARG0 in associative list argument in Random() must be a matrix.");
+						} else {
+							return (_Matrix *) InverseWishartDeviate (*value);
+						}
+						
+					} else {
+						errMsg = _String ("Require entry with key \"ARG0\" in associative list argument to Random().");
+					}
+
+				} else {
+					errMsg = _String ("Require ARG0 entry in associative list argument to Random().");
+				}
+
             } else if (pdf == _String("Multinomial")) {
                 return (_Matrix *) MultinomialSample ((_Constant *) pdfArgs->GetByKey (arg, NUMBER));
             } else {
@@ -8166,7 +8189,7 @@ _Matrix*    _Matrix::SimplexSolve (_Parameter desiredPrecision )
 // and without goto labels
 
 // the of dimension RxC is interpreted as follows
-// R-1 constaints
+// R-1 constraints
 // C-2 variables
 
 // the first row:
@@ -8404,7 +8427,8 @@ _PMathObj   _Matrix::DirichletDeviate (void)
             distribution defined by contents of this matrix as
             hyperparameters (a > 0).
        ----------------------------------------------------------- */
-
+    //ReportWarning (_String("In DirichletDeviate()"));
+	
     _String     errMsg;
 
     long        dim;
@@ -8434,6 +8458,7 @@ _PMathObj   _Matrix::DirichletDeviate (void)
         for (long i = 0; i < dim; i++) {
             res.Store (0, i, res(0,i)/denom);
         }
+		//ReportWarning (_String("In DirichletDeviate() result ") & (_String *)res.toStr());
 
         return (_PMathObj) res.makeDynamic();
     } else {
@@ -8460,7 +8485,7 @@ _PMathObj   _Matrix::GaussianDeviate (_Matrix & cov)
             3rd ed., p.379
        ------------------------------------------------------ */
 
-    ReportWarning (_String("Entered _Matrix::GaussianDeviate() with cov = ") & (_String *)(cov.toStr()));
+    //ReportWarning (_String("Entered _Matrix::GaussianDeviate() with cov = ") & (_String *)(cov.toStr()));
 
     _String     errMsg;
 
@@ -8469,20 +8494,20 @@ _PMathObj   _Matrix::GaussianDeviate (_Matrix & cov)
         return new _Matrix;
     }
 
-    long        kdim        = GetVDim();    // number of entries in this _Matrix object as vector of means
+    long kdim = GetVDim();    // number of entries in this _Matrix object as vector of means
 
     if (cov.GetHDim() == kdim && cov.GetVDim() == kdim) {
-        _Matrix     * cov_cd    = (_Matrix *) cov.CholeskyDecompose();
-        _Matrix     gaussvec (1, kdim, false, true);
+        _Matrix* cov_cd = (_Matrix *) cov.CholeskyDecompose();
+        _Matrix gaussvec (1, kdim, false, true);
 
-        ReportWarning (_String("\nCholesky decomposition of cov = ") & (_String *) cov_cd->toStr());
+        //ReportWarning (_String("\nCholesky decomposition of cov = ") & (_String *) cov_cd->toStr());
 
         // fill column vector with independent standard normal deviates
         for (long i = 0; i < kdim; i++) {
             gaussvec.Store (0, i, gaussDeviate());
         }
 
-        ReportWarning (_String ("\nvector of gaussian deviates = ") & (_String *) gaussvec.toStr());
+        //ReportWarning (_String ("\nvector of gaussian deviates = ") & (_String *) gaussvec.toStr());
 
         // left multiply vector by Cholesky decomposition of covariance matrix
         gaussvec *= (_Matrix &) (*cov_cd);
@@ -8682,7 +8707,7 @@ _PMathObj   _Matrix::WishartDeviate (_Matrix & df, _Matrix & decomp)
 
 
     // debugging
-    ReportWarning (_String("Entered _Matrix::WishartDeviate() with this matrix: ") & (_String *) this->toStr() & " and df vector " & (_String *) df.toStr());
+    //ReportWarning (_String("Entered _Matrix::WishartDeviate() with this matrix: ") & (_String *) this->toStr() & " and df vector " & (_String *) df.toStr());
 
 
     long        n   = GetHDim();
@@ -8723,7 +8748,7 @@ _PMathObj   _Matrix::WishartDeviate (_Matrix & df, _Matrix & decomp)
         }
     }
 
-    ReportWarning (_String("diag=") & (_String *)decomp.toStr());   // column vector
+    //ReportWarning (_String("diag=") & (_String *)decomp.toStr());   // column vector
 
 
     // populate diagonal with square root of i.i.d. chi-square random deviates
@@ -8736,21 +8761,21 @@ _PMathObj   _Matrix::WishartDeviate (_Matrix & df, _Matrix & decomp)
         }
     }
 
-    ReportWarning (_String("rdeviates(A)=") & (_String *)rdeviates.toStr());
+    //ReportWarning (_String("rdeviates(A)=") & (_String *)rdeviates.toStr());
 
 
     // result is obtained from D^T B D, where B = A^T A, ^T is matrix transpose
     rd_transpose = (_Matrix &) rdeviates;
     rd_transpose.Transpose();
-    ReportWarning (_String("transpose(A)=") & (_String *)rd_transpose.toStr());
+    //ReportWarning (_String("transpose(A)=") & (_String *)rd_transpose.toStr());
     rd_transpose *= (_Matrix &) rdeviates;  // A^T A
-    ReportWarning (_String("A^T A=") & (_String *)rd_transpose.toStr());
+    //ReportWarning (_String("A^T A=") & (_String *)rd_transpose.toStr());
     rd_transpose *= (_Matrix &) decomp; // A^T A D
-    ReportWarning (_String("A^T A D=") & (_String *)rd_transpose.toStr());
+    //ReportWarning (_String("A^T A D=") & (_String *)rd_transpose.toStr());
 
     decomp.Transpose();
     decomp *= (_Matrix &) rd_transpose; // D^T A^T A D
-    ReportWarning (_String("D^T A^T A D=") & (_String *)decomp.toStr());
+    //ReportWarning (_String("D^T A^T A D=") & (_String *)decomp.toStr());
 
     return (_PMathObj) decomp.makeDynamic();
 }

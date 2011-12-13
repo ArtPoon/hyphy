@@ -5,6 +5,9 @@ from distutils.sysconfig import get_python_inc
 from os                  import listdir, getcwd, path
 from glob                import glob
 import sys
+
+from platform import architecture, mac_ver
+
 #incdir = get_python_inc(plat_specific=1)
 #print incdir
 
@@ -14,6 +17,8 @@ import sys
 scriptPath = path.realpath(path.dirname(sys.argv[0]))
 srcPath, libDir = path.split(scriptPath)
 hyphyPath, srcDir = path.split(srcPath)
+# with open('batchfiles.list') as fh:
+#     resFiles = [(f, path.join(*(['..'] * 5 + f.split('/')))) for f in fh.read().split('\n') if f != '']
 
 contribPath = path.join(hyphyPath, 'contrib')
 sqlitePath = path.join(contribPath, 'SQLite-3.6.17')
@@ -36,6 +41,11 @@ sourceFiles = coreSrcFiles + newSrcFiles +  sqliteFiles + prefFile + linkFiles +
 includePaths =  [path.join(p, 'include') for p in [coreSrcPath, newSrcPath, guiSrcPath]]
 includePaths += [linkPath, contribPath]
 
+# check for 64bit and define as such
+define_macros = [('__HYPHY_64__', None)] if '64' in architecture()[0] else []
+
+# openmp on Mac OS X Lion is broken
+openmp = ['-fopenmp'] if mac_ver()[0] < '10.7.0' else []
 
 setup(
     name = 'HyPhy',
@@ -44,8 +54,9 @@ setup(
     author = 'Sergei L Kosakovsky Pond',
     author_email = 'spond@ucsd.edu',
     url = 'http://www.hyphy.org/',
-    package_dir = {'': 'LibraryModules/Python'},
     packages = ['HyPhy'],
+    package_dir = {'HyPhy': 'LibraryModules/Python/HyPhy'},
+#    data_files = resFiles,
     # py_modules = ['HyPhy'],
     ext_modules = [Extension('_HyPhy',
             sourceFiles,
@@ -55,17 +66,26 @@ setup(
                              ('__MP__', None),
                              ('__MP2__', None),
                              ('_SLKP_LFENGINE_REWRITE_', None),
-                             ('__HEADLESS__', None)],
+                             ('__HEADLESS__', None),
+                             ('_HYPHY_LIBDIRECTORY_', '"/usr/local/lib/hyphy"')] + define_macros,
             libraries = ['pthread', 'ssl', 'crypto', 'curl'],
             extra_compile_args = [
-#                     '-Wno-int-to-pointer-cast',
-#                     '-Wno-pointer-to-int-cast',
+                    '-Wno-int-to-pointer-cast',
+                    # '-Wno-pointer-to-int-cast',
                     '-Wno-char-subscripts',
                     '-Wno-sign-compare',
+                    '-Wno-parentheses',
+                    '-Wno-uninitialized',
+#                    '-Wno-conversion-null',
+                    '-Wno-unused-variable',
+#                    '-Wno-unused-but-set-variable',
+                    '-Wno-shorten-64-to-32',
                     '-fsigned-char',
                     '-O3',
                     '-fpermissive',
-                    '-fPIC'
-            ]
+                    '-fPIC',
+            ] + openmp,
+            extra_link_args = [
+            ] + openmp
     )]
 )
