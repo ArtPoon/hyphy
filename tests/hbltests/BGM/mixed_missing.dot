@@ -1,0 +1,25 @@
+digraph foo
+{
+	node [fontname="Helvetica" style="filled" fillcolor="white"];
+	edge [labelfontname="Helvetica" labelangle=30 labeldistance=2];
+	A [shape="Msquare"];
+	B [shape="Msquare"];
+	C [shape="Msquare"];
+	D [shape="circle"];
+	E [shape="Msquare"];
+	F [shape="circle"];
+	G [shape="circle"];
+	H [shape="circle"];
+	B->A;
+	E->A;
+	A->H;
+	B->C;
+	B->E;
+	B->H;
+	C->D;
+	E->C;
+	H->D;
+	E->G;
+	G->F;
+	H->G;
+}
