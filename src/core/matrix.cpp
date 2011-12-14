@@ -724,6 +724,8 @@ _PMathObj   _Matrix::Eigensystem (void)
                 }
                 key = "2";
                 DeleteObject (cpy);
+				
+				
                 return res;
             }
         }
@@ -8672,6 +8674,7 @@ _PMathObj   _Matrix::InverseWishartDeviate (_Matrix & df)
 
         _Matrix decomp ((_Matrix &) *invCD);    // duplication constructor
 
+		DeleteObject (inv);
         DeleteObject (invCD);
 
         return WishartDeviate (df, decomp);

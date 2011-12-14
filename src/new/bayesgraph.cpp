@@ -7,7 +7,7 @@
  *
  */
 
-#if defined __AFYP_REWRITE_BGM__
+
 
 #include "bayesgraph.h"
 
@@ -224,7 +224,7 @@ _BayesianGraphicalModel::_BayesianGraphicalModel (_AssociativeList * nodes)
 		 : this will create all kinds of havoc downstream
          */
         // bug fix:
-        ReportWarning (_String("node_name[") & node & "]=" & *((_String *)node_names.lData[node]));
+        //ReportWarning (_String("node_name[") & node & "]=" & *((_String *)node_names.lData[node]));
 		
 
 
@@ -347,7 +347,7 @@ _BayesianGraphicalModel::_BayesianGraphicalModel (_AssociativeList * nodes)
 
     scores_cached = FALSE;
 
-    ReportWarning (_String ("Constructed BGM with ") & num_nodes & " nodes.");
+    ReportWarning (_String ("Constructed BayesianGraphicalModel with ") & num_nodes & " nodes.");
 }
 
 
@@ -425,7 +425,7 @@ bool _BayesianGraphicalModel::SetDataMatrix (_Matrix * data)
                 if (data_nlevels.lData[node] != num_levels.lData[node]) {
                     WarnError (_String ("ERROR: Number of levels in data (") & data_nlevels.lData[node] & ") for discrete node "
                                & node & " is not compatible with node setting (" & num_levels.lData[node]
-                               & ").  Check your data or reset the BGM.");
+                               & ").  Check your data or reset the BayesianGraphicalModel.");
 
                     return (FALSE);
                 }
@@ -442,7 +442,7 @@ bool _BayesianGraphicalModel::SetDataMatrix (_Matrix * data)
             }
         }
 
-        ReportWarning (_String ("Set data matrix."));
+        //ReportWarning (_String ("Set data matrix."));
     } else {
         WarnError (_String("ERROR: Number of variables in data (") & data->GetVDim() & ") does not match number of nodes in graph (" & num_nodes & ")");
         return (FALSE);
@@ -577,7 +577,7 @@ bool _BayesianGraphicalModel::SetNodeOrder (_SimpleList * order)
                 node_order_arg.lData[i] = order->lData[i];
             }
 
-            ReportWarning (_String("BGM node order arg set to ") & (_String *) node_order_arg.toStr());
+            ReportWarning (_String("BayesianGraphicalModel node order arg set to ") & (_String *) node_order_arg.toStr());
 
             return (TRUE);
         } else {
@@ -919,6 +919,7 @@ void    _BayesianGraphicalModel::UpdateDirichletHyperparameters (long dnode, _Si
             }
 
             if (index >= 0) {
+				// this is where we would modify the increment value (1) if we are weighting cases...
                 n_ijk->Store ((long) index, child_state, (*n_ijk)(index, child_state) + 1);
                 n_ij->Store ((long) index, 0, (*n_ij)(index, 0) + 1);
             }
@@ -943,6 +944,7 @@ void    _BayesianGraphicalModel::UpdateDirichletHyperparameters (long dnode, _Si
                 continue;
             }
 
+			// this is where we would modify the increment value (1) if we are weighting cases...
             n_ijk->Store (0, child_state, (*n_ijk)(0, child_state) + 1);
             n_ij->Store (0, 0, (*n_ij)(0,0) + 1);
         }
@@ -1314,7 +1316,6 @@ void    _BayesianGraphicalModel::CacheNodeScores (void)
                     aux_list,
                     nk_tuple;
 
-    _Parameter      score;
     _Matrix         single_parent_scores (num_nodes, 1, false, true);
 
 
@@ -1610,7 +1611,7 @@ void _BayesianGraphicalModel::SerializeBGMtoMPI (_String & rec)
     }
 
     // write BGM constructor
-    rec << "BGM ";
+    rec << "BayesianGraphicalModel ";
     rec << bgmName;
     rec << "=(nodes);\n";
 
@@ -2537,7 +2538,8 @@ void    _BayesianGraphicalModel::OrderMetropolis (bool do_sampling, long n_steps
                         // not all _GrowingVector entries in marginals are being used,
                         //      i.e., edges incompatible with order
                         if (gv->GetUsed() > 0) {
-                            result->Store (edge, 1, (*result)(edge, 1) + exp (LogSumExpo(gv) - denom));
+							// store as transpose so that row = parent and column = child, same as GraphMCMC
+                            result->Store (parent*num_nodes+child, 1, (*result)(parent*num_nodes+child, 1) + exp (LogSumExpo(gv) - denom));
                         }
                     }
                 }
@@ -2606,7 +2608,6 @@ void    _BayesianGraphicalModel::OrderMetropolis (bool do_sampling, long n_steps
 
 
 
-#endif
 
 
 

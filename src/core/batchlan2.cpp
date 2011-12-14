@@ -25,12 +25,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include      "likefunc.h"
 #include      "scfg.h"
 #include      <ctype.h>
-
-#if defined __AFYP_REWRITE_BGM__
 #include      "bayesgraph.h"
-#else
-#include      "bgm.h"
-#endif
+
 
 #ifndef __HYPHY_NO_SQLITE__
 #include "sqlite3.h"
@@ -76,9 +72,7 @@ _String     sqlOpen                 ("SQL_OPEN"),
             deferConstrainAssignment("DEFER_CONSTRAINT_APPLICATION"),
             assertionBehavior       ("ASSERTION_BEHAVIOR"),
             _hyStatusConditionProbsMatrix
-            ("Constructing Conditional Probabilities Matrix"),
-
-            isDynamicGraph          ("BGM_DYNAMIC");
+            ("Constructing Conditional Probabilities Matrix");
 
 
 extern      _String                 blDoSQL,
@@ -133,6 +127,7 @@ void        _HBL_Init_Const_Arrays  (void)
     _HY_GetStringGlobalTypes.Insert(new _String("Tree"), 4);
     _HY_GetStringGlobalTypes.Insert(new _String("SCFG"), 5);
     _HY_GetStringGlobalTypes.Insert(new _String("Variable"), 6);
+	_HY_GetStringGlobalTypes.Insert(new _String("BayesianGraphicalModel"), 7);
 }
 
 //____________________________________________________________________________________
@@ -799,11 +794,20 @@ void      _ElementaryCommand::ExecuteCase33 (_ExecutionList& chain)
 
         break;
     }
-    case 5: // SCFG
+	case 5: { // SCFG
         if (sID<scfgNamesList.lLength) {
             result = (_String*)scfgNamesList(sID)->makeDynamic();
         }
         break;
+	}
+	case 7: { // BayesianGraphicalModel
+		if (sID < 0 && bgmNamesList.lLength > 0) {
+			theReceptacle->SetValue (new _Matrix (bgmNamesList), false);
+			return;
+		} else if (sID < bgmNamesList.lLength) {
+			result = (_String*)bgmNamesList(sID)->makeDynamic();
+		}
+	}
     default: { // everything else...
         // decide what kind of object current argument represents
         _String nmspaced       = AppendContainerName(*currentArgument,chain.nameSpacePrefix);
@@ -842,7 +846,7 @@ void      _ElementaryCommand::ExecuteCase33 (_ExecutionList& chain)
                 }
             }
             case HY_BL_BGM: {
-#if defined __AFYP_REWRITE_BGM__
+
                 _BayesianGraphicalModel * this_bgm      = (_BayesianGraphicalModel *) theObject;
 
                 switch (sID) {
@@ -865,11 +869,11 @@ void      _ElementaryCommand::ExecuteCase33 (_ExecutionList& chain)
                     return;
                 }
                 default: {
-                    WarnError (_String ("Unrecognized index ") & sID & "in call to GetString on BGM object");
+                    WarnError (_String ("Unrecognized index ") & sID & "in call to GetString on BayesianGraphicalModel object");
                     return;
                 }
                 }
-#endif
+
                 break;
             }
             case HY_BL_LIKELIHOOD_FUNCTION:
@@ -2266,52 +2270,25 @@ void      _ElementaryCommand::ExecuteCase63 (_ExecutionList& chain)
 void    _ElementaryCommand::ExecuteCase64 (_ExecutionList& chain)
 {
     chain.currentCommand++;
-#if defined __AFYP_REWRITE_BGM__
+
     _PMathObj   avl1    = FetchObjectFromVariableByType (&AppendContainerName(*(_String*)parameters(1),chain.nameSpacePrefix), ASSOCIATIVE_LIST);
 	
     if (! (avl1)) {
-        WarnError (_String ("Argument (") & *(_String*)parameters(1) & " in call to BGM = ... must evaluate to associative list");
+        WarnError (_String ("Argument (") & *(_String*)parameters(1) & " in call to BayesianGraphicalModel = ... must evaluate to associative list");
     } else {
 		// check that the keys in this AVL are numerical integers in order
 		_List * theKeys = ((_AssociativeList *) avl1) -> GetKeys();
 		
 		for (long kix = 0; kix < theKeys->lLength; kix++) {
 			if (! ((_AssociativeList *)avl1)->GetByKey(kix, ASSOCIATIVE_LIST) ) {
-				WarnError (_String ("Associative list passed to BGM must have integer keys increasing from 0, expecting key ") & kix);
+				WarnError (_String ("Associative list passed to BayesianGraphicalModel must have integer keys increasing from 0, expecting key ") & kix);
 				return;
 			}
 		}
 		
         _BayesianGraphicalModel * bgm   = new _BayesianGraphicalModel ((_AssociativeList *) avl1);
 
-#else
-    _PMathObj   avl1    = FetchObjectFromVariableByType (&AppendContainerName(*(_String*)parameters(1),chain.nameSpacePrefix), ASSOCIATIVE_LIST),
-                avl2 = FetchObjectFromVariableByType (&AppendContainerName(*(_String*)parameters(2),chain.nameSpacePrefix), ASSOCIATIVE_LIST);
 
-    if (! (avl1 && avl2)) {
-        WarnError (_String ("Both arguments (") & *(_String*)parameters(1) & " and " & *(_String*)parameters(2) &
-                   " in a call to BGM = ... must evaluate to associative arrays");
-    } else {
-        // is this a dynamic Bayesian network?
-        _Parameter      dynamicArg;
-        checkParameter (isDynamicGraph, dynamicArg, 0.);
-        bool is_dynamic_graph = (dynamicArg > 0) ? TRUE : FALSE;
-
-        Bgm     * bgm;  // pointer to base class
-
-        long    num_nodes   = ((_Matrix *) avl1)->GetSize() + ((_Matrix *) avl2)->GetSize();
-
-        if (num_nodes < 2) {
-            WarnError (_String("Cannot construct a Bgm object on less than 2 nodes, received ") & num_nodes);
-            return;
-        } else {
-            if (is_dynamic_graph)   {
-                bgm = new _DynamicBgm ((_AssociativeList*)avl1, (_AssociativeList*)avl2);
-            } else {
-                bgm = new Bgm ((_AssociativeList*)avl1, (_AssociativeList*)avl2);
-            }
-        }
-#endif
         _String bgmName     = AppendContainerName (*(_String *) parameters(0), chain.nameSpacePrefix);
         long    bgmIndex    = FindBgmName (bgmName);
 
@@ -2412,7 +2389,7 @@ bool    _ElementaryCommand::ConstructNN (_String&source, _ExecutionList&target)
 
 //____________________________________________________________________________________
 bool    _ElementaryCommand::ConstructBGM (_String&source, _ExecutionList&target)
-// syntax: BGM ident = (<discrete nodes>, <continuous nodes>)
+// syntax: BayesianGraphicalModel ident = (<discrete nodes>, <continuous nodes>)
 {
     // locate ident in HBL string
     long    mark1 = source.FirstSpaceIndex(0,-1,1),
@@ -2422,7 +2399,7 @@ bool    _ElementaryCommand::ConstructBGM (_String&source, _ExecutionList&target)
     _String bgmID (source, mark1+1,mark2-1);
 
     if (mark1==-1 || mark2==-1 || mark1+1>mark2-1 || !bgmID.IsValidIdentifier(true)) {
-        WarnError ("BGM declaration missing a valid identifier");
+        WarnError ("BayesianGraphicalModel declaration missing a valid identifier");
         return false;
     }
 
@@ -2435,17 +2412,12 @@ bool    _ElementaryCommand::ConstructBGM (_String&source, _ExecutionList&target)
         ExtractConditions (source,mark1+1,pieces,',');
     }
 
-#if defined __AFYP_REWRITE_BGM__
+
     if (pieces.lLength != 1) {
-        WarnError ("Expected: BGM ident = (<nodes>)");
+        WarnError ("Expected: BayesianGraphicalModel ident = (<nodes>)");
         return false;
     }
-#else
-    if (pieces.lLength < 2) {
-        WarnError ("Expected: BGM ident = (<discrete nodes>, <continuous nodes>)");
-        return false;
-    }
-#endif
+
 
     _ElementaryCommand * bgm = new _ElementaryCommand (64);
     bgm->parameters && (&bgmID);
@@ -3896,7 +3868,7 @@ BaseRef _HYRetrieveBLObjectByName    (_String& name, long& type, long *index)
     if (type & HY_BL_BGM) {
         loc = FindBgmName (name);
         if (loc >= 0) {
-            type = HY_BL_SCFG;
+            type = HY_BL_BGM;
             if (index) {
                 *index = loc;
             }
