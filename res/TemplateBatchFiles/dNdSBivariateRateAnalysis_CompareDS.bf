@@ -167,7 +167,7 @@ if (runType == 0)
 	{
 		for (customLoopCounter=0; customLoopCounter<customLoopCounter2; customLoopCounter=customLoopCounter+1)
 		{
-			if (modelDesc[customLoopCounter2]==modelDesc[customLoopCounter])
+			if (modelDesc1[customLoopCounter2]==modelDesc1[customLoopCounter])
 			{
 				ModelTitle  = ModelTitle+modelDesc1[customLoopCounter2];	
 				if (rateBiasTerms[customLoopCounter2] == "1")

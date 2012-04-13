@@ -26,7 +26,7 @@
 
  */
 
-#if defined __AFYP_REWRITE_BGM__
+
 
 #include "list.h"
 #include "simplelist.h"
@@ -206,4 +206,4 @@ protected:
 };
 #endif
 
-#endif
+

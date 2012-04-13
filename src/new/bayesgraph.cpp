@@ -7,7 +7,7 @@
  *
  */
 
-#if defined __AFYP_REWRITE_BGM__
+
 
 #include "bayesgraph.h"
 
@@ -224,7 +224,7 @@ _BayesianGraphicalModel::_BayesianGraphicalModel (_AssociativeList * nodes)
 		 : this will create all kinds of havoc downstream
          */
         // bug fix:
-        ReportWarning (_String("node_name[") & node & "]=" & *((_String *)node_names.lData[node]));
+        //ReportWarning (_String("node_name[") & node & "]=" & *((_String *)node_names.lData[node]));
 		
 
 
@@ -347,7 +347,7 @@ _BayesianGraphicalModel::_BayesianGraphicalModel (_AssociativeList * nodes)
 
     scores_cached = FALSE;
 
-    ReportWarning (_String ("Constructed BGM with ") & num_nodes & " nodes.");
+    ReportWarning (_String ("Constructed BayesianGraphicalModel with ") & num_nodes & " nodes.");
 }
 
 
@@ -390,6 +390,12 @@ bool _BayesianGraphicalModel::SetDataMatrix (_Matrix * data)
     //ReportWarning (_String ("Entered SetDataMatrix()."));
     _SimpleList data_nlevels;
 
+	/* reset missing value indicators to 0, in case we 
+		are replacing a data matrix with missing values */
+	for (long node = 0; node < num_nodes; node++) {
+		has_missing.lData[node] = 0;
+	}
+	
     /* check for user assignment of continuous missing value indicator */
     checkParameter (_HYBgm_CONTINUOUS_MISSING_VALUE, continuous_missing_value, -666.0);
     data_nlevels.Populate (num_nodes, 1, 0);
@@ -425,7 +431,7 @@ bool _BayesianGraphicalModel::SetDataMatrix (_Matrix * data)
                 if (data_nlevels.lData[node] != num_levels.lData[node]) {
                     WarnError (_String ("ERROR: Number of levels in data (") & data_nlevels.lData[node] & ") for discrete node "
                                & node & " is not compatible with node setting (" & num_levels.lData[node]
-                               & ").  Check your data or reset the BGM.");
+                               & ").  Check your data or reset the BayesianGraphicalModel.");
 
                     return (FALSE);
                 }
@@ -442,7 +448,7 @@ bool _BayesianGraphicalModel::SetDataMatrix (_Matrix * data)
             }
         }
 
-        ReportWarning (_String ("Set data matrix."));
+        ReportWarning (_String ("Set data matrix to:\n") & (_String *)theData.toStr() & "\n");
     } else {
         WarnError (_String("ERROR: Number of variables in data (") & data->GetVDim() & ") does not match number of nodes in graph (" & num_nodes & ")");
         return (FALSE);
@@ -577,7 +583,7 @@ bool _BayesianGraphicalModel::SetNodeOrder (_SimpleList * order)
                 node_order_arg.lData[i] = order->lData[i];
             }
 
-            ReportWarning (_String("BGM node order arg set to ") & (_String *) node_order_arg.toStr());
+            ReportWarning (_String("BayesianGraphicalModel node order arg set to ") & (_String *) node_order_arg.toStr());
 
             return (TRUE);
         } else {
@@ -919,6 +925,7 @@ void    _BayesianGraphicalModel::UpdateDirichletHyperparameters (long dnode, _Si
             }
 
             if (index >= 0) {
+				// this is where we would modify the increment value (1) if we are weighting cases...
                 n_ijk->Store ((long) index, child_state, (*n_ijk)(index, child_state) + 1);
                 n_ij->Store ((long) index, 0, (*n_ij)(index, 0) + 1);
             }
@@ -943,6 +950,7 @@ void    _BayesianGraphicalModel::UpdateDirichletHyperparameters (long dnode, _Si
                 continue;
             }
 
+			// this is where we would modify the increment value (1) if we are weighting cases...
             n_ijk->Store (0, child_state, (*n_ijk)(0, child_state) + 1);
             n_ij->Store (0, 0, (*n_ij)(0,0) + 1);
         }
@@ -1314,7 +1322,6 @@ void    _BayesianGraphicalModel::CacheNodeScores (void)
                     aux_list,
                     nk_tuple;
 
-    _Parameter      score;
     _Matrix         single_parent_scores (num_nodes, 1, false, true);
 
 
@@ -1610,7 +1617,7 @@ void _BayesianGraphicalModel::SerializeBGMtoMPI (_String & rec)
     }
 
     // write BGM constructor
-    rec << "BGM ";
+    rec << "BayesianGraphicalModel ";
     rec << bgmName;
     rec << "=(nodes);\n";
 
@@ -1720,6 +1727,8 @@ _Matrix *   _BayesianGraphicalModel::Optimize (void)
         }
 
 #if defined __AFYP_DEVELOPMENT__ && defined __HYPHYMPI__
+		WarnError (_String("Actually, BGM optimization on MPI is not supported yet... :-P"));
+		
         int         size,
                     rank;
         long        mpi_node;
@@ -1980,7 +1989,7 @@ _SimpleList *   _BayesianGraphicalModel::GetOrderFromGraph (_Matrix & graph)
         }
 
     }
-
+	ReportWarning(_String("Constructed node order from graph:\n") & (_String *)new_order->toStr() & "\n");
     return (_SimpleList *) new_order->makeDynamic();
 }
 
@@ -2020,14 +2029,14 @@ void    _BayesianGraphicalModel::GraphMetropolis (bool fixed_order, long mcmc_bu
 
 
     // parse HBL settings
-    checkParameter (_HYBgm_MCMC_PROBSWAP, prob_swap, 0);
+    checkParameter (_HYBgm_MCMC_PROBSWAP, prob_swap, 0.1);
     if (prob_swap < 0 || prob_swap > 1.) {
         _String oops ("BGM_MCMC_PROBSWAP must be assigned a value between 0 and 1.  Exiting.\n");
         WarnError (oops);
         return;
     }
 
-    checkParameter (_HYBgm_MCMC_MAXFAILS, param_max_fails, 0);
+    checkParameter (_HYBgm_MCMC_MAXFAILS, param_max_fails, 100);
     if (param_max_fails <= 0.) {
         WarnError ("BGM_MCMC_MAXFAILS must be assigned a value greater than 0");
         return;
@@ -2056,11 +2065,17 @@ void    _BayesianGraphicalModel::GraphMetropolis (bool fixed_order, long mcmc_bu
             return;
 		}
 	} else {
+		/*
 		(*proposed_graph)   = (_Matrix &) theStructure;
 		proposed_order      = GetOrderFromGraph (theStructure);
+		 */
+		proposed_order = GetOrderFromGraph (*proposed_graph);
 	}
 
-
+	
+	// randomize the initial graph
+	RandomizeGraph (proposed_graph, proposed_order, prob_swap, num_nodes*num_nodes, max_fails, fixed_order);
+	ReportWarning (_String ("seeding with randomized graph:\n") & (_String *) proposed_graph->toStr());
 
     // status line
 #if !defined __UNIX__ || defined __HEADLESS__
@@ -2212,7 +2227,7 @@ void    _BayesianGraphicalModel::RandomizeGraph (_Matrix * graph, _SimpleList * 
     do {
         // a fail-safe to avoid infinite loops
         if (fail > max_fails) {
-            WarnError (_String ("Failed to modify the graph in GraphMCMC() after ") & max_fails & " attempts.");
+            WarnError (_String ("Failed to modify the graph in RandomizeGraph() after ") & max_fails & " attempts.");
             break;
         }
 
@@ -2537,7 +2552,8 @@ void    _BayesianGraphicalModel::OrderMetropolis (bool do_sampling, long n_steps
                         // not all _GrowingVector entries in marginals are being used,
                         //      i.e., edges incompatible with order
                         if (gv->GetUsed() > 0) {
-                            result->Store (edge, 1, (*result)(edge, 1) + exp (LogSumExpo(gv) - denom));
+							// store as transpose so that row = parent and column = child, same as GraphMCMC
+                            result->Store (parent*num_nodes+child, 1, (*result)(parent*num_nodes+child, 1) + exp (LogSumExpo(gv) - denom));
                         }
                     }
                 }
@@ -2606,7 +2622,6 @@ void    _BayesianGraphicalModel::OrderMetropolis (bool do_sampling, long n_steps
 
 
 
-#endif
 
 
 

@@ -30,12 +30,7 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #include "time.h"
 #include "scfg.h"
 #include "HYNetInterface.h"
-
-#if defined __AFYP_REWRITE_BGM__
 #include "bayesgraph.h"
-#else
-#include "bgm.h"
-#endif
 
 
 
@@ -205,14 +200,7 @@ globalPolynomialCap             ("GLOBAL_POLYNOMIAL_CAP"),
                                 bgmScores                       ("BGM_SCORE_CACHE"),
                                 bgmGraph                        ("BGM_GRAPH_MATRIX"),
                                 bgmNodeOrder                    ("BGM_NODE_ORDER"),
-#if defined __AFYP_REWRITE_BGM__
                                 bgmConstraintMx                 ("BGM_CONSTRAINT_MATRIX"),
-                                bgmParameters                   ("BGM_NETWORK_PARAMETERS"),
-#else
-                                bgmWeights                      ("BGM_WEIGHT_MATRIX"),
-                                bgmBanMx                        ("BGM_BAN_MATRIX"),
-                                bgmEnforceMx                    ("BGM_ENFORCE_MATRIX"),
-#endif
 
                                 pathToCurrentBF                 ("PATH_TO_CURRENT_BF"),
                                 hfCountGap                      ("COUNT_GAPS_IN_FREQUENCIES"),
@@ -1573,7 +1561,7 @@ _String  blFor                  ("for("),
          blRequireVersion           ("RequireVersion("),
          blSCFG                     ("SCFG "),
          blNN                       ("NeuralNet "),
-         blBGM                      ("BGM "),
+         blBGM                      ("BayesianGraphicalModel "),
          blSimulateDataSet          ("SimulateDataSet"),
          blAssert                   ("assert(");
 
@@ -4933,7 +4921,7 @@ void      _ElementaryCommand::ExecuteCase35 (_ExecutionList& chain)
         currentArgument          = (_String*)parameters(1);
 
         if (f<0 && g<0) { // BGM Branch
-#if defined __AFYP_REWRITE_BGM__
+
             _BayesianGraphicalModel * lkf = (_BayesianGraphicalModel *) bgmList (bgm_index);
 
             // set data matrix
@@ -5043,208 +5031,13 @@ void      _ElementaryCommand::ExecuteCase35 (_ExecutionList& chain)
             }
 
 
-            // set network parameters
-            else if (currentArgument->Equal (&bgmParameters)) {
-                _PMathObj inAVL = FetchObjectFromVariableByType ( &AppendContainerName ( *(_String *) parameters (2), chain.nameSpacePrefix), ASSOCIATIVE_LIST);
-                if (inAVL) {
-                    _AssociativeList * paramAVL = (_AssociativeList*)inAVL;
-                    ((_BayesianGraphicalModel *)lkf)->ImportCache (paramAVL);
-                } else {
-                    errMsg =  _String("Identifier ")&*(_String*)parameters(2)&" does not refer to a valid associative list variable";
-                    acknError (errMsg);
-                    return;
-                }
-            }
-
-
             // anything else
             else {
                 errMsg = *currentArgument & " is not a valid BGM parameter in call to SetParameter";
                 WarnError (errMsg);
                 return;
             }
-#else
-            Bgm * lkf = (Bgm *) bgmList (bgm_index);
-            if (currentArgument->Equal (&bgmData)) {
-                _Matrix     * dataMx = (_Matrix *) FetchObjectFromVariableByType ( &AppendContainerName ( *(_String *) parameters (2), chain.nameSpacePrefix), MATRIX);
-                if (dataMx) {
-                    long    num_nodes = ((Bgm *)lkf)->GetNumNodes();
 
-                    if (dataMx->GetVDim() == num_nodes) {
-                        ((Bgm *)lkf)->SetDataMatrix ((_Matrix *) dataMx->makeDynamic());
-                    } else if (dataMx->GetVDim() == 2*num_nodes) {  // dynamic BGM
-                        ((_DynamicBgm *)lkf)->SetDataMatrix ((_Matrix *) dataMx->makeDynamic());
-                    } else {
-                        errMsg = _String("Data matrix columns (") & dataMx->GetVDim() & " ) does not match number of nodes in graph (" & num_nodes & ").";
-                        acknError (errMsg);
-                        return;
-                    }
-                } else {
-                    errMsg =  _String("Identifier ")&*(_String*)parameters(2)&" does not refer to a valid matrix variable";
-                    acknError (errMsg);
-                    return;
-                }
-
-#ifdef __NEVER_DEFINED__
-                // read data matrix from comma-delimited file at path specified in 2nd argument
-                _Matrix * data   = new _Matrix;
-                ReadDataFromFile (',', *data);
-
-                ((Bgm *)lkf)->SetDataMatrix (data);
-#endif
-
-            } else if (currentArgument->Equal (&bgmWeights)) {
-                _Matrix     * weightMx  = (_Matrix *) FetchObjectFromVariableByType ( &AppendContainerName ( *(_String *) parameters (2), chain.nameSpacePrefix), MATRIX);
-
-                if (weightMx) {
-                    if (weightMx->GetHDim() == ((Bgm *)lkf)->GetNumCases() ) {
-                        ((Bgm *)lkf)->SetWeightMatrix ((_Matrix *) weightMx->makeDynamic());
-                    } else {
-                        WarnError ("Number of weights does not match number of observations in current data set.");
-                        return;
-                    }
-                } else {
-                    _String *   lastArgument    = (_String *) parameters (2);
-                    long        val             = ProcessNumericArgument (lastArgument, chain.nameSpacePrefix);
-
-                    if (val > 0.) { // support deprecated argument
-                        long num_cases = (long) ((Bgm *)lkf->GetNumCases());
-
-
-                        _Matrix *   weights = new _Matrix (num_cases , 1, false, true);
-
-                        for (long wm = 0; wm < num_cases; wm++) {
-                            weights->Store (wm, 0, 1.);
-                        }
-                        ((Bgm *)lkf)->SetWeightMatrix ((_Matrix *) weights->makeDynamic());
-                    } else {
-                        WarnError (_String("Identifier ")&*(_String*)parameters(2)&" does not refer to a valid matrix variable");
-                        return;
-                    }
-                }
-#ifdef __NEVER_DEFINED__
-                _String *   lastArgument    = (_String *) parameters (2);
-                long        val             = ProcessNumericArgument (lastArgument, chain.nameSpacePrefix);
-
-                if (val > 0.) {
-                    // default weight matrix filled with 1's
-                    _Matrix *   weights = new _Matrix ( val, 1, false, true);
-                    for (long wm = 0; wm < val; wm++) {
-                        weights->Store (wm, 0, 1.);
-                    }
-                } else {
-                    // read in weight matrix from comma-delimited file
-                    _Matrix *   weights = new _Matrix;
-                    ReadDataFromFile (',', *weights);
-                    ((Bgm *)lkf)->SetWeightMatrix (weights);
-                }
-#endif
-            } else if (currentArgument->Equal (&bgmScores)) {
-                _Matrix * scores = (_Matrix *) FetchObjectFromVariableByType ( &AppendContainerName ( *(_String *) parameters (2), chain.nameSpacePrefix), MATRIX);
-                if (scores) {
-                    ((Bgm *)lkf)->ImportNodeScores (scores);
-                } else {
-                    errMsg =  _String("Identifier ")&*(_String*)parameters(2)&" does not refer to a valid matrix variable";
-                    acknError (errMsg);
-                    return;
-                }
-            }
-
-            else if (currentArgument->Equal (&bgmGraph)) {  // set DAG to user-defined configuration
-                _Matrix     * graphMx   = (_Matrix *) FetchObjectFromVariableByType ( &AppendContainerName ( *(_String *) parameters (2), chain.nameSpacePrefix), MATRIX);
-
-                if (graphMx) {
-                    long    num_nodes = ((Bgm *)lkf)->GetNumNodes();
-
-                    if (graphMx->GetHDim() == num_nodes && graphMx->GetVDim() == num_nodes) {
-                        ((Bgm *)lkf)->SetGraphMatrix ((_Matrix *) graphMx->makeDynamic());
-                    } else {
-                        errMsg = _String("Dimension of graph does not match current graph.");
-                        acknError (errMsg);
-                        return;
-                    }
-                } else {
-                    errMsg =  _String("Identifier ")&*(_String*)parameters(2)&" does not refer to a valid matrix variable";
-                    acknError (errMsg);
-                    return;
-                }
-            }
-
-            else if (currentArgument->Equal (&bgmBanMx)) {  // set banned edges matrix
-                _Matrix     * banMx = (_Matrix *) FetchObjectFromVariableByType ( &AppendContainerName ( *(_String *) parameters (2), chain.nameSpacePrefix), MATRIX);
-
-                if (banMx) {
-                    long    num_nodes = ((Bgm *)lkf)->GetNumNodes();
-
-                    if (banMx->GetHDim() == num_nodes && banMx->GetVDim() == num_nodes) {
-                        ((Bgm *)lkf)->SetBanMatrix ((_Matrix *) banMx->makeDynamic());
-                    } else {
-                        errMsg = _String("Dimensions of banned edge matrix does not match current graph.");
-                        acknError (errMsg);
-                        return;
-                    }
-                } else {
-                    errMsg =  _String("Identifier ")&*(_String*)parameters(2)&" does not refer to a valid matrix variable";
-                    acknError (errMsg);
-                    return;
-                }
-            }
-
-            else if (currentArgument->Equal (&bgmEnforceMx)) {  // set enforced edges matrix
-                _Matrix     * enforceMx = (_Matrix *) FetchObjectFromVariableByType ( &AppendContainerName ( *(_String *) parameters (2), chain.nameSpacePrefix), MATRIX);
-
-                if (enforceMx) {
-                    long    num_nodes = ((Bgm *)lkf)->GetNumNodes();
-
-                    if (enforceMx->GetHDim() == num_nodes && enforceMx->GetVDim() == num_nodes) {
-                        ((Bgm *)lkf)->SetEnforceMatrix ((_Matrix *) enforceMx->makeDynamic());
-                    } else {
-                        errMsg = _String("Dimensions of enforced edge matrix does not match current graph.");
-                        acknError (errMsg);
-                        return;
-                    }
-                } else {
-                    errMsg =  _String("Identifier ")&*(_String*)parameters(2)&" does not refer to a valid matrix variable";
-                    acknError (errMsg);
-                    return;
-                }
-            }
-
-            else if (currentArgument->Equal (&bgmNodeOrder)) {
-                _Matrix     * orderMx   = (_Matrix *) FetchObjectFromVariableByType ( &AppendContainerName ( *(_String *) parameters (2), chain.nameSpacePrefix), MATRIX);
-
-                if (orderMx) {
-                    // UNDER DEVELOPMENT  April 17, 2008 afyp
-                    long    num_nodes = ((Bgm *)lkf)->GetNumNodes();
-
-                    _SimpleList     * orderList = new _SimpleList();
-
-                    orderList->Populate (num_nodes, 0, 0);
-
-                    if (orderMx->GetVDim() == num_nodes) {
-                        for (long i = 0; i < num_nodes; i++) {
-                            orderList->lData[i] = (long) ((*orderMx) (0, i));
-                        }
-
-                        ((Bgm *)lkf)->SetBestOrder ( (_SimpleList *) orderList->makeDynamic() );
-                    } else {
-                        errMsg = _String("Length of order vector doesn't match number of nodes in graph.");
-                        acknError (errMsg);
-                        return;
-                    }
-                } else {
-                    errMsg =  _String("Identifier ")&*(_String*)parameters(2)&" does not refer to a valid matrix variable";
-                    acknError (errMsg);
-                    return;
-                }
-            }
-
-            else {
-                errMsg = *currentArgument & " is not a valid BGM parameter in call to SetParameter";
-                WarnError (errMsg);
-                return;
-            }
-#endif
         }
 
         else {
@@ -5428,12 +5221,12 @@ void      _ElementaryCommand::ExecuteCase37 (_ExecutionList& chain)
     _String matrixName = chain.AddNameSpaceToID(*(_String*)parameters(0)),
             *objectName = (_String*)parameters(1);
 
-#if defined __AFYP_REWRITE_BGM__
+
     long    sID;
     if (parameters.lLength > 2) {
         sID = ProcessNumericArgument ((_String*)parameters(2), chain.nameSpacePrefix);
     }
-#endif
+
 
     _Matrix *result = nil;
 
@@ -5530,21 +5323,7 @@ void      _ElementaryCommand::ExecuteCase37 (_ExecutionList& chain)
             } else {
                 f = bgmNamesList.Find (&objectNameID);
                 if (f >= 0) {   // then hey, it's a BGM!
-#if !defined __AFYP_REWRITE_BGM__
-                    /*
-                    Bgm * lf = (Bgm *) bgmList (f);
-                    // result = lf->ExportNodeScores();
-                    if (sID == 0)
-                        result = lf->GetStructure();
-                    else if (sID == 1)
-                        result = lf->GetNodeOrder();
-                    else
-                    {
-                        WarnError (_String("Integer argument (") & sID & "in GetInformation() has no assigned return value, returning NULL\n");
-                    }
-                     */
-#endif
-
+					WarnError (_String("GetInformation() not currently supported by BayesianGraphicalModel"));
                 } else {
                     // it's a data set filter
                     if ((f = dataSetFilterNamesList.Find (&objectNameID))>=0)
@@ -6642,50 +6421,6 @@ bool      _ElementaryCommand::Execute    (_ExecutionList& chain) // perform this
                         break;
                     }
                 }
-#if not defined __AFYP_REWRITE_BGM__
-                else {      // BGM::CovarianceMatrix, i.e. MCMC
-                    lkf    = (_LikelihoodFunction*)bgmList  (ff);
-#ifdef __AFYP_DEVELOPMENT__
-                    /*
-                    _Matrix     * orderMx = (_Matrix *) FetchObjectFromVariableByType ( &AppendContainerName ( *(_String *) parameters(2), chain.nameSpacePrefix), MATRIX);
-                    _SimpleList * first_order = nil;
-
-                    if (orderMx)
-                    {
-                        checkPointer (first_order = new _SimpleList);
-
-                        for (long klee = 0; klee < orderMx->GetHDim(); klee++)
-                        {
-                            (*first_order) << (long) (*orderMx) (0, klee);
-                        }
-
-                        if (first_order->lLength == 0)
-                        {
-                            DeleteObject (first_order);
-                            first_order = nil;
-                        }
-                    }
-                    */
-                    _SimpleList *   first_order = nil;
-                    /*
-                    if (last_order.lLength > 0)
-                    {
-                        checkPointer (first_order = new _SimpleList ((_SimpleList &) last_order));  // duplucate
-                    }
-                    */
-                    optRes = (_Matrix *) lkf->CovarianceMatrix (first_order);
-
-                    // _SimpleList pointer will be deleted in CovarianceMatrix()
-#else
-                    optRes = (_Matrix*)lkf->CovarianceMatrix(nil);
-#endif
-                    if (optRes) {
-                        result->SetValue(optRes,false);
-                    }
-
-                    break;
-                }
-#endif
             }
         } else {
             lkf = (_LikelihoodFunction*)likeFuncList(ff);
@@ -8664,19 +8399,13 @@ bool    _ElementaryCommand::ConstructGetInformation (_String&source, _ExecutionL
 
     _List pieces;
     ExtractConditions (source,blGetInformation.sLength,pieces,',');
-#if defined __AFYP_REWRITE_BGM__
+
     if (pieces.lLength < 2) {
         _String errMsg ("Expected at least 2 arguments: GetInformation(object,receptacle,...);");
         WarnError (errMsg);
         return false;
     }
-#else
-    if (pieces.lLength!=2) {
-        _String errMsg ("Expected syntax: GetInformation(object,receptacle);");
-        WarnError (errMsg);
-        return false;
-    }
-#endif
+
     else {
         _String *s0 = (_String*)pieces(0),
                  *s1 = (_String*)pieces(1);

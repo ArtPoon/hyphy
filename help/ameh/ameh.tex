@@ -1,4 +1,4 @@
-\documentclass[12pt]{book}
+\documentclass[12pt,twoside,openright]{book}
 
 %\linespread{1.6}
 \usepackage{times}
@@ -6,9 +6,10 @@
 \usepackage[round,sort&compress,numbers]{natbib}
 %\newcommand{\citenumfont}{\textit}
 \usepackage{framed}
-
+\usepackage{sidecap}
 \usepackage{dingbat,phaistos,manfnt}
 
+\parskip 1ex
 %\usepackage{fancyhdr}
 %\pagestyle{fancy}
 %\renewcommand{\headrulewidth}{0pt}
@@ -84,9 +85,18 @@ But, owing to the uniqueness of the model system being studied in the lab, or th
 
 \hyphy\ enables you to do just about anything in the domain of phylogenetics.  This is both a blessing and a curse --- to borrow a popular phrase from C programming, it ``gives you enough rope to hang yourself with''.  While there are thousands of biologists that use the standard analyses distributed with \hyphy\ or accessed as web applications on our public computing cluster ({\it Datamonkey}), there are only a small (but growing!) number of biologists that have mastered the \hyphy\ batch language to the degree that they can write or modify scripts for their own research.  
 
-We're going to assume that you are acquainted with some of the basic concepts in computer programming.  For example, we assume that you know why one has to initialize a variable, what a logical operator is (such as `and' or `\&\&', depending on the language), and what an iterative block of code (such as for-loops) looks like.  On the other hand, we try to explain enough so that those of us who are kind of rusty can plod along.  This book is written to enable someone who is acquainted with programming to jump right into customizing or developing new models in molecular evolution using \hyphy.
+We're going to assume that you are acquainted with some of the basic concepts in \textbf{ computer programming}.  If you've {\it ever} written a program in BASIC or Pascal, then you should be okay.  For example, we assume that you know why one has to initialize a variable, what a logical operator is (such as `and' or `\&\&', depending on the language), and what an iterative block of code (such as for-loops) looks like.  On the other hand, we try to explain enough so that those of us who are kind of rusty can plod along.  This book is written to enable someone who is acquainted with programming to jump right into customizing or developing new models in molecular evolution using \hyphy.
 
-This book is {\it not} for you if you're not even remotely interested in modifying a template batch file.  You can get what you need to get done through {\it Datamonkey} or one of the items in the standard analysis menu.  We've tried our best to make the standard analyses in \hyphy\ accessible and self-explanatory.  We even have several book chapters and a rudimentary software manual that do a pretty good job of telling you what you need to know to get things done!  
+We also have to assume that you are familiar with some basic concepts in \textbf{biology}.  For example, you'd better have heard of DNA and have a general idea of its composition and function.  You should have a basic understanding of genetic mutation and natural selection.  
+
+If we \textit{don't} assume that you know about {\it any} of these things, then this is going to be a very big book!  Too bad.  We're doing this for free and doing it in our free time.  Which doesn't exist.
+
+\textbf{This book is also for you} if you are instructing a graduate-level seminar on molecular evolution and you are interested in designing a hands-on curriculum that emphasizes practical computer work.  We have tried to write this book in such a way that it could be used as a textbook to train graduate students and post-docs in advanced molecular evolution.  
+
+\textbf{This book is \textit{probably not} for you} if you're not even remotely interested in modifying a template batch file.  You can get what you need to get done through {\it Datamonkey} or one of the items in the standard analysis menu.  We've tried our best to make the standard analyses in \hyphy\ accessible and self-explanatory.  We even have several book chapters and a rudimentary software manual that do a pretty good job of telling you what you need to know to get things done!  
+
+
+
 
 
 \section {How do I get \hyphy?}
@@ -98,18 +108,34 @@ This book is {\it not} for you if you're not even remotely interested in modifyi
 
 
 
+
+
+
 \chapter {The \hyphy\ Batch Language}
 
-A batch language is a collection of application-specific function calls that make it possible to automate long and complex processes.  The \hyphy\ batch language (HBL) is an application-specific language for modeling molecular evolution.  Like nearly all  programming languages, the HBL understands conventional objects such as scalar values (the number 3.14) and arrays (the inclusive sequence of integers from 1 to 10).  Because \hyphy\ is a language for modeling molecular evolution, it also includes objects that represent multiple sequence alignments (DataSet), phylogenetic trees (Tree), and substitution rate models (Model).  These domain-specific objects are so important and elaborate that we will dedicate a chapter for each of them. 
+\begin{quote}
+\textit{``As they say in Discworld, we are trying to unravel the Mighty Infinite using a language which was designed to tell one another where the fresh fruit was.''}\\ -- Terry Pratchett.
+\end{quote}
+
+\vspace{0.5in}
+
+One of the most important features of \hyphy\ is that it has a rich batch language, because it enables you to customize an analysis to test almost any hypothesis you can imagine (and backs that up with the computing power to make it possible!).  
+
+A \textbf{batch language} is a collection of application-specific function calls that make it possible to automate long and complex processes.  A recipe for shortbread cookies is written in the batch language of kitchen appliances and utensils.  In DOS and earlier versions of Windows, files with the extension {\tt .bat} were batch files that grouped commands that could be run in sequence to accomplish a complex task.  
+
+ The \hyphy\ batch language (\textbf{HBL}) is an application-specific language for modeling molecular evolution.  Like nearly all programming languages, the HBL understands conventional objects such as scalar values (the number 3.14) and arrays (the inclusive sequence of integers from 1 to 10).  Because \hyphy\ is a language for modeling molecular evolution, it also includes objects that represent multiple sequence alignments (DataSet), phylogenetic trees (Tree), and substitution rate models (Model).  These domain-specific objects are so important and elaborate that we will dedicate a chapter for each of them. 
 
  For the time being, we're just going to get acquainted with the conventions and syntax of the HBL.  This is the `glue' that makes everything work together.
 
 
 \section {Similarities to C syntax}
 
-The HBL is modeled after the programming language C.  The following is a (non-exhaustive) list of similarities between HBL and C, for those of you that have programmed in C before and want to get a running start into coding HBL:
+The HBL is modelled after the programming language C.  This is a choice of convenience: C is a popular programming language, so many academics will have encountered it at some point in their careers; and mimicking an existing language bypasses an enormous number of design decisions that we would otherwise have to make.  If you've never written a program in C, \textbf{don't worry}!  We will be going over the HBL syntax for the remainder of this chapter (and a few other chapters besides).  
+
+The following is a (non-exhaustive) list of similarities between HBL and C, for those of you that have programmed in C before and want to get a running start into coding HBL:
 
 \begin{itemize}
+\itemsep 2pt
 \item Statements are terminated with a semi-colon (;) 
 \item Arguments are separated by commas.
 \item Blocks of code are enclosed in curly braces (\{\ldots\}). 
@@ -127,11 +153,11 @@ The HBL is modeled after the programming language C.  The following is a (non-ex
 \item Input and output are handled by functions named {\tt fscanf} and {\tt fprintf}, respectively.  However, their actual usage is differs from C (see Section \ref{io}).
 \end{itemize}
 
-If you've never written a program in C, \textbf{don't worry}!  We will be going over the HBL syntax for the remainder of this chapter (and a few other chapters besides).
+\noindent As you can see, there are plenty of similarities between the HBL and C.  However, there are also a substantial number of reasons that HBL is definitely not the same as C.  
 
-On the other hand, the HBL departs substantially from the conventions of the C language in several important respects.  First of all, \hyphy\ does not explicitly distinguish between integers and floating-point numbers.  All scalar values are handled as floating-point numbers.  Consequently, the number 1 is stored internally as a floating-point number 1.0 but displayed as 1.  
+The most basic difference is that HBL is truly a scripting language and not a low-level programming language like C.  HBL interfaces with the core \hyphy\ application that handles all of the gory details that are involved in opening a file and reading its contents, minimizing a function, or performing matrix algebra.  For example, you can define a matrix without having to explicitly allocate memory to store its contents.
 
-Second, the HBL uses {\bf dynamic typing} of variables instead of the explicit variable declaration of C.  In other words, the type of a variable is determined by its context.  The following statement:
+A more nuanced difference is that HBL uses {\bf dynamic typing} of variables instead of the explicit variable declaration of C.  In other words, the type of a variable is determined by its context.  The following statement:
 
 
 \begin{leftbar}
@@ -141,9 +167,9 @@ x = x + y;
 \end{verbatim}
 \end{leftbar}
 
-\noindent creates a floating-point variable named {\tt x} and assigns it the value 1.0, and then creates a second floating-point variable named {\tt y} and assigns it the default value of 0.  It assumes that the second variable is also floating-point because it is being added to a floating point variable.  
+\noindent creates a floating-point variable named {\tt x} and assigns it the value 1.0, and then creates a second floating-point variable named {\tt y} and assigns it the default value of 0.  It assumes that the second variable is also floating-point because it is being added to a floating point variable.   Similarly, \hyphy\ does not explicitly distinguish between integers and floating-point numbers.  All numbers are dynamically typed as floating-point numbers.  In other words, the number 1 is stored internally as a floating-point number (1.0) but displayed as `1'.  
 
-Most importantly, HBL is truly more of a scripting language than a low-level programming language like C.  That means that it is a lot more convenient to do regular tasks.  For example, you can define a matrix without having to explicitly allocate memory to store its contents.
+
 
 In the following sections, we will go over the fundamental aspects of the HBL syntax.  In the interest of giving you enough information to get a quick start, and to place the application-specific components of the HBL (such as Tree) in context, we will gloss over some of the finer details --- you can find these in the comprehensive HBL reference wiki at our website, \textbf{http:// www.hyphy.org}.  
 
@@ -209,27 +235,49 @@ Alternatively, the format string can be comprised of a single argument that tell
 
 \subsection {Number}
 
-All numerical values in \hyphy\ are stored internally as a double-precision floating point variable.  {\tt Number} objects can be manipulated with the usual arithmetic operators and transcendental functions:
+All numerical values in \hyphy\ are stored internally as a double-precision floating point variable.  {\tt Number} objects can be manipulated with a large number of operators and functions:
 
 \begin{center}
-\begin{tabular}{ll}
+\begin{tabular}{lll}
+\textbf{Syntax} & \textbf{Function}\\
 \hline
-Syntax & Function\\
-\hline
+{\tt Abs(x)} & Absolute value\\
+
+\multicolumn{2}{l}{\it Arithmetic operators}\\
 {\tt x + y} & Add\\
 {\tt x - y} & Subtract\\
 {\tt x * y} & Multiply\\
 {\tt x / y} & Divide\\
 {\tt x \$ y} & Integer divide (return the integer part of the quotient)\\
 {\tt x \% y} & Modulo operator (return the remainder of the quotient)\\
+
+\multicolumn{2}{l}{\it Transcendental functions}\\
 {\tt Exp(x)} & Exponential function\\
 {\tt Log(x)} & Natural logarithm\\
 {\tt Sin(x)} & Sine function (also {\tt Cos}, {\tt Tan}, {\tt Arctan})\\
+
+\multicolumn{2}{l}{\it Hypergeometric functions}\\
+{\tt Gamma(x)} & Gamma function, $\Gamma(x) = \int_0^{\inf}t^{z-1}e^{-t}dt$\\
+{\tt CGammaDist(x)} & Incomplete gamma function, $\Gamma(x) = \int_0^{\inf}t^{z-1}e^{-t}dt$\\
+{\tt LnGamma(x)} & Natural log of gamma function, used to avoid numerical overflow.\\
+{\tt Beta(x)} & Beta function, $B(x,y) =\int_0^1 t^{x-1} (1-t)^{y-1} dt$\\
 {\tt Erf(x)} & Error function, $\frac{2}{\sqrt{\pi}}\int_{0}^{x}\exp{-t^2}dt$\\
-{\tt Gamma(x)} & Gamma function, $\int_0^{\inf}t^{z-1}e^{-t}dt$\\
+
+\multicolumn{2}{l}{\it Probability distribution-based functions}\\
+{\tt InvChi2(x,a)} & Inverse chi-squared distribution, $f(x,a) = \frac{2^{-a/2}}{\Gamma(a/2)}x^{-a/2-1}e^{-1/(2x)}$\\
 \hline
 \end{tabular}
 \end{center}
+
+In practice, the majority of model parameters in \hyphy\ are {\tt Number} objects, such as substitution rates and branch lengths.  Because \hyphy\ is designed for hypothesis testing using phylogenies, many of these parameters must be defined in the context of a phylogeny.  When a parameter belongs to a model that is associated with a phylogeny, it must be declared to be either \textbf{global} or \textbf{local} in scope.  A globally defined variable applies to all branches of a tree, and is defined as follows:
+
+\begin{leftbar}
+\begin{verbatim}
+global a = 1; /* assign 1.0 as its initial value */
+\end{verbatim}
+\end{leftbar}
+
+
 
 
 
@@ -258,16 +306,215 @@ We often want to run a sequence of function calls many times, or run different s
 
 
 
-\chapter {Model}
 
+\chapter {Models}
+
+\begin{quote}
+\textit{``Remember that all models are wrong; the practical question is how wrong do they have to be to not be useful.''}\\ -- George E.~P.~Box.
+\end{quote}
+
+\vspace{0.5in}
+
+\hyphy\ was designed to analyze genetic sequence data by fitting models of molecular evolution.  In this context, a model is a set of hypotheses represented by one or more mathematical expressions that are inevitably a gross over-simplification of biological reality.  When we propose a model, we will always have to grapple with the fundamental conflict between making the model complex enough to be realistic, while simple enough to be useful.  
+
+  If we try to fit reality more closely by making the model more complex, then we are in danger of \textbf{overfitting} the data.  
+  
+  
+
+\section {What is molecular evolution?}
+
+Molecular evolution is the study of how biological sequences evolve over time.  Biological sequences are made up of nucleotides (making up a nucleic acid) or amino acids (making up a protein) that are the product of the transcription and translation of nucleotides.  Since these elements of a sequence can assume only one of a finite number of forms, they are modelled as \textbf{discrete variables}.  Discrete variables are outcomes of a finite state space; for example, tossing a coin results in either `heads' or `tails'.  The states assumed by a variable can either map directly to the 4 nucleotides (A, C, G, and T/U) or the 20 naturally-occurring amino acids, or they can map to composite states.  The most prevalent composite state variable in molecular evolution is the codon, which is comprised of 3 adjacent nucleotides ({\it e.g.}, ATG) that encode a particular amino acid given a genetic code\footnote{There are 64 possible codons ($4^3$) but models of codon evolution generally only consider 61 by omitting the three codons (TAA, TAG, and TGA) that encode the termination of transcription in the standard genetic code.}.  Hence, we can examine molecular evolution at whatever scale is most informative for the question at hand so long as we can define the \textbf{unit of molecular evolution}, whether this unit is a nucleotide, a codon, or the presence or absence of an entire gene. 
+
+% mutation
+
+A genetic sequence is transmitted from a parent to its offspring, but it is not transmitted intact.  As the cellular replication machinery copies the template sequence, it makes errors that either substitute one nucleotide for another (\textbf{substitution}), insert one or more additional nucleotides to produce a longer sequence (\textbf{insertion}), or skip one or more nucleotides to produce a shorter sequence (\textbf{deletion}).  In addition, the template may itself become modified.  Over time, nucleic acids are damaged from both natural processes (such as oxidation by naturally occurring byproducts of cellular metabolism) and extrinsic factors (such as ultraviolet radiation).  The cellular components that repair such damage are not completely accurate, which can result not only in nucleotide substitutions, insertions and deletions, but also large-scale and often disastrous rearrangements of large segments of the genome.
+
+Defining the unit of molecular evolution is important because we assume that these units evolve independently of one another.  In other words, we assume that evolution at one nucleotide does not influence the evolution of another nucleotide in the gene or even the entire genome.  If this assumption is very definitely wrong and the nucleotides do not evolve independently, then we need to rescale the model.  For example, the evolution of paired nucleotides in an RNA stem is highly dependent \cite{Muse:1994} so the appropriate unit of molecular evolution is the pair of nucleotides (a dinucleotide).
+
+In sum, molecular evolution is conventionally modelled as a random process in which one or more independent discrete variables change over time.  This type of process can be represented by a family of stochastic processes known as Markov chains.  
+
+
+\section {Markov chains}
+
+A Markov chain is a model that describes the random changes in a discrete variable over time.  The central assumption of a Markov chain model is that the probability that a discrete variable $Y$ is in a given state at time $t$ depends only on the most recent observation of its state at time $t-\delta t$ and no other states before then\footnote{For those of you who have learned about Markov chains before, note that we are jumping straight into continuous-time Markov chains because they are the most useful for modelling molecular evolution.  We are skipping over discrete-time Markov chains in which observations are separated by a constant time interval because this condition is seldom an adequate approximation in this context.}.  This assumption is extremely useful because it limits the number of parameters that we have to deal with in a model.  
+
+Imagine that you are sitting in your apartment late at night reviewing a paper and you glance out your window at the building across the street.  There's a light on over there!  How reassuring -- you're not the only one awake late at night.  A few minutes later, you glance out the window again and the light is off\footnote{For the time being, we're just obsessing about one of the windows in the building across the street.  Perhaps an attractive neighbour lives there.}.  Whether the light is on or off is a discrete variable (we assume that your neighbours don't have dimmers installed).  What is the probability that when you look out the window again after some amount of time $t$ that the light will be back on?  We can use a Markov model to make a prediction.
+
+%First, we need to introduce the concept of an \textbf{instantaneous rate}. 
+Let's suppose that the rate that your neighbour flicks the light-switch is 1.0 times / hour.  Not only is this a nice round number, but it also works out to about 24 flicks a day, which is not very unrealistic!   
+%How long do you have to wait to see this event?  We can make a prediction based on a \textbf{Poisson process} in which the time between events is modelled by the exponential distribution, $P(t) = \lambda e^{-\lambda t}$, where $\lambda$ is the instantaneous rate of the event.  
+Measuring time in units of hours, we can model the light-switch with the following rate matrix:
+
+\begin{center}
+\begin{tabular}{ccc}
+$Q = \left (
+\begin{array}{cc}
+-0.2 & 0.2\\
+0.8 & -0.8\\
+\end{array}
+\right )$
+& 
+\hfill
+&
+{\tt Q = \{\{-0.2, 0.2\},\{0.8, -0.8\}\};}\\
+\end{tabular}
+\end{center}
+
+\noindent where we are giving mathematical expressions on the left and HBL code on the right.  If the light is off at time $t_0$, then we read along the first row of $Q$; otherwise, the light is on and we read along the second row.  The first column gives the rate of change in the probability that the light is off at time $t_0+\delta t$, where rates are measured in units of time $\delta t$.  Note that the entry in the first row and first column is negative.  This is because there is a net outflow of probability mass away from the state `off' into the state `on'.  Each row in $Q$ must sum to zero; otherwise there would be a net loss or gain in the overall probability mass.  This wouldn't make sense -- like if I told you that there was a 60\% probability that a coin toss would result in heads and a 50\% probability that it would be tails.  
+
+To get the probability that the light is on after half an hour has elapsed ($t = 0.5$), we need to take the matrix exponential of $Q$ times the number of time units $\delta t$ that have elapsed:
+
+\begin{center}
+\begin{tabular}{ccc}
+$P(t) = e^{Q t}$
+& 
+\hspace{1in}
+&
+{\tt t=0.5; P = Exp(Q*t);}\\
+\end{tabular}
+\end{center}
+
+\noindent  $P$ is a \textbf{transition probability matrix} -- it gives the probability that the Markov chain model is in state $X$ given that $t$ time units previously it was in state $Y$.  The {\tt Exp} function in HBL is polymorphic and will return a matrix exponential if called with a Matrix argument, and the scalar exponential if called with a Number argument.  Note that we had to set $t$ to a numerical value.  Otherwise, we would be asking \hyphy\ to do symbolic computation which it can't do!  In fact, if $t$ has never been declared then \hyphy\ would dynamically type it as the number 0 and $P$ would be equal to an identity matrix -- the probability of staying on or staying off would be 1 because no time has elapsed!  Let's get \hyphy\ to display $P$:
+
+\begin{leftbar}
+\begin{small}
+\begin{verbatim}
+>P
+{
+{    0.921306131943,   0.0786938680575}
+{     0.31477547223,     0.68522452777}
+}
+\end{verbatim}
+\end{small}
+\end{leftbar}
+
+\noindent After 0.5 units of time, there is a small probability that a light that was off is now on (first row and second column, about 0.08).
+% and a slightly larger probability that a light that was on is now off (second row and second column, about 0.016). 
+We can extract this number by left-multiplying $P$ by the row vector $(1\; 0)$, which is like saying that the neighbour's light was definitely off at time $t_0$ (with probability 1.0):
+
+\begin{leftbar}
+\begin{small}
+\begin{verbatim}
+>{{1,0}}*P
+{
+{    0.921306131943,   0.0786938680575}
+}
+\end{verbatim}
+\end{small}
+\end{leftbar}
+
+Let's experiment a little; what happens if you set $t$ to 2 and re-calculate $P$?  The probability that the light is now on when it was off at time $t_0$ should now be about 0.17.   But instead of manually feeding in more and more numbers, let's try something a little more elegant.  We're going to populate a matrix with the off-diagonal values of $P$ for incrementally greater values of $t$ and then get \hyphy\ to render a chart from this matrix using the following HBL code:
+
+
+\begin{leftbar}
+\begin{small}
+\begin{verbatim}results = {100,3}; /* create a matrix with 100 rows and 2 columns */for (row = 0; row < Rows(results); row = row+1) {   t = row * 0.1;   P = Exp(Q*t);   results[row][0] = t;   results[row][1] = P[0][1];   results[row][2] = P[1][1];}
+\end{verbatim}
+\end{small}
+\end{leftbar}
+
+\noindent and if you are using the \hyphy\ GUI, you can use the following HBL code to render a chart:
+
+\begin{leftbar}
+\begin{small}
+\begin{verbatim}columnHeaders = {{"t","P01","P11"}};OpenWindow (CHARTWINDOW, {{"Transition probabilities"}
+ {"columnHeaders"}{"results"}{"Step Plot"}{"t"}
+ {"P01;P11"}});
+\end{verbatim}
+\end{small}
+\end{leftbar}
+
+
+\begin{SCfigure}[2][tb]
+\includegraphics[width=3in]{figures/TransitionProbabilities}
+\caption{A \hyphy\ chart window displaying the change in transition probabilities into state 1 (light is `on') conditioned on being in either state 0 (light is `off', plotted in red) or state 1 (plotted in blue) at a time point $t$ units ago.  The window has been resized slightly and may appear different on your computer.}
+\label{transprobfig}
+\end{SCfigure}
+
+
+\noindent This code produces Figure \ref{transprobfig}.  There are two important features to note here.  First, the transition probabilities to state 1 (`light is on') given the initial states are `off' and `on' start at 0.0 and 1.0, respectively, when $t=0$.  Since no time has elapsed, we are still at the initial state.  Second, the transition probabilities decay towards the same value (0.2) with increasing $t$.  The longer we wait before glance out the window again, the less it matters whether the neighbour's light was off or on the last time we looked.  The transition probabilities are converging to the \textbf{stationary distribution} -- the probabilities of each state after the process has gone on for an infinite amount of time.  
+
+In calculating these transition probabilities, we've had to make several assumptions.  First, we've had to assume that the rates that the neighbour turns their light on or off does not change over time.  This enables us to use a Markov chain model that is \textbf{time homogeneous}.  While it is possible to relax this assumption and compute a time inhomogeneous Markov model, it is not easy to do.  That is because the rate parameters in $Q$ change over the time interval between observations of the process, which means that we cannot obtain $P$ from a straight-forward matrix exponential calculation of Q and $t$.  While there are methods to calculate $P$ for a time-inhomogeneous Markov chain, this requires some knowledge about {\it how} the rate parameters are changing over time.  This is knowledge that we usually don't have about biological systems and it is not feasible to infer it from data.  Conversely, we know that this a bad assumption.  Of course the rate of evolution changes over time!  There is a way around this, however.  Read on.
+
+
+\section {Maximum likelihood}
+
+Sitting at your desk in the dark, you've made a single observation: the neighbour's light was on a few minutes ago, and now it is off.  Using a Markov chain model, we can predict the probability that it will be on again after a given amount of time.  However, this requires that we know the rate parameters that go into the matrix $Q$.  In most situations, we have no idea what these rates are.  Let's imagine for the sake of this exercise that it's \textit{really important} to figure out the rates that your neighbour turns their light on and off.  (We need to name our neighbour.  Let's give them a nice, non-gender specific one: `Robin'.)  We're definitely not going to get a good estimate based on a single observation; we need more data!
+
+We could sit in our living room for a very long time and keep taking glances out our window.  But we really need to get to sleep and sitting around in the dark for hours doesn't sound like such a great idea.  So we come up with a clever plan: let's assume that all the other windows in the apartment building across the street \textit{belong to people who are just like Robin}.  Now we're watching dozens of Robins simultaneously!  We take a photo of the building and then after some time has elapsed, we take another photo and note which lights are off or on in each photo by transcribing these outcomes as 0's and 1's, respectively.  These data can be recorded in a modified FASTA format as follows: 
+
+\begin{leftbar}
+\begin{small}
+\begin{verbatim}
+$BASESET:"01"
+>first_photo
+00111000110000000000
+01100000000100000110
+01010100001010010010
+10010001000010000100
+00001100000010011000
+>second_photo
+00000000110101000000
+01100100001100000110
+01010000000000010000
+00010001000110000100
+00001100000010001000
+\end{verbatim}
+\end{small}
+\end{leftbar}
+
+\noindent We've generated these data by simulation and purposefully formatted the binary sequences to resemble apartment buildings.  The {\tt BASESET} statement is tells \hyphy\ that the sequences contained in this file are comprised of binary characters that assume values of 0 and 1.  Assuming that you're reading a digital (PDF) version of this book, copy and paste the above into a text editor and save it as a file named ``{\tt photos.seq}''.  
+
+We can now estimate the rate parameters from these data using the following HBL code, which we have divided into four sections that specify the model, tree, data, and likelihood function:  
+
+\begin{leftbar}
+\begin{small}
+\begin{verbatim}
+global r01 = 1.0;
+global r10 = 1.0;
+q = {{ *, r01}, {r10, *}};
+pi = {{r10/(r01+r10), r01/(r01+r10)}};
+Model M = (q, pi, 1);
+
+ACCEPT_ROOTED_TREES = 1;
+ACCEPT_BRANCH_LENGTHS = 1;
+Tree T = "(first_photo:0.0, second_photo:0.5)";
+
+DataSet photos = ReadDataFromFile("photos.seq");
+DataSetFilter D = CreateFilter (photos, 1);
+
+LikelihoodFunction LF = (D, T);
+Optimize(res, LF);
+\end{verbatim}
+\end{small}
+\end{leftbar}
+
+\noindent The first two lines declare two global parameters named $r_{01}$ and $r_{10}$ that correspond to the rates of switching a light from off to on, and from on to off, respectively.  Next, we apply these parameters in a rate matrix named $q$ as we have previously done.  Note that the asterisks (*) are a shorthand for ``whatever it takes to ensure that this row sums to zero''.  {\tt pi} is a row vector representing the stationary distribution given $q$, so named because this vector is usually denoted by the Greek letter $\pi$.  By specifying $\pi$ this way, we are assuming that the probabilities of the lights being on or off in the first photo are sampled from the stationary distribution -- in other words, that the process has gone on unobserved for an infinite amount of time before the first photo.
+
+On line 5, we encounter the \hyphy\ object \textbf{Model} for the first time.  We define a Model by passing a tuple containing at least two arguments:
+\begin{enumerate}
+\item A $k\times k$ rate matrix, where $k$ is the number of possible states.
+\item A vector of length $k$ representing the stationary distribution.
+\item (Optional) A binary value (1=yes, 0=no) to indicate whether the rate matrix should automatically be left-multiplied by the stationary distribution.  The default value is 1.
+\end{enumerate}
+
+The second section defines a Tree object.  We will put off discussion of trees in \hyphy\ until the next chapter.  For the time being, all you need to know is that this section creates a Tree object that is comprised of \textit{a single branch} originating from {\tt first\underline{ }photo} and terminating at {\tt second\underline{ }photo}
+
+
+%Likelihood is the probability of a model given data.  
 
 \chapter {Tree}
+
+% homology
 
 
 \chapter {DataSet}
 
 \chapter {LikelihoodFunction}
 
+
+\bibliographystyle{abbrvnat}
+\bibliography{ameh}
 
 \end{document}
 
